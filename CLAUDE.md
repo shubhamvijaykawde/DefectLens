@@ -57,3 +57,4 @@ reports/       # results tables and figures that go into the README
   At the end of a phase, tell me which files changed and suggest a commit message; I commit
   and push myself. Writing workflow files (e.g. .github/workflows/ci.yml) is fine.
 - At the end of each phase, update PLAN.md (status + measured results) and the README section.
+- Never add Co-Authored-By or any Claude attribution lines to suggested commit messages.
