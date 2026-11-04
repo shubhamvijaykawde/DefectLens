@@ -1,0 +1,9 @@
+# Encoder pinned in Phase 0c from the installed anomalib 2.7.0 source (signature default in both
+# lightning_model.py and torch_model.py) and confirmed by a real forward pass:
+# features (B, 324, 384) at 252x252 with patch size 14.
+name: anomaly_dino
+encoder_name: vit_small_patch14_dinov2
+image_size: [252, 252]
+num_neighbours: 1
+masking: false
+coreset_subsampling: false

@@ -1,0 +1,8 @@
+# Add patterns of files dvc should ignore, which could improve detection of changes.
+.venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+mlruns/
+outputs/

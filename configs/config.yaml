@@ -1,0 +1,12 @@
+# Root Hydra config. Later phases add groups (model/, data/, preprocess/, ...).
+seed: 42
+experiment: defectlens
+mlflow:
+  tracking_uri: sqlite:///mlruns/mlflow.db
+  artifact_root: mlruns/artifacts
+data:
+  dvc_file: null  # e.g. data/raw/neu_det.dvc once the dataset is versioned
+
+hydra:
+  run:
+    dir: outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}

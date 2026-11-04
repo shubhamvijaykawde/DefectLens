@@ -1,0 +1,22 @@
+# environment
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# experiments, data, weights (data via DVC; never commit these)
+mlruns/
+outputs/
+multirun/
+lightning_logs/
+# DVC writes its own .gitignore entries next to each `dvc add`ed path; run `dvc add` before
+# `git add` on anything under data/. Raw downloads/archives are never tracked:
+data/raw/_downloads/
+models/
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.engine

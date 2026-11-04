@@ -1,0 +1,722 @@
+# DefectLens — phased plan
+
+## Status
+
+Plan approved 2026-11-01 (revision 2).
+
+| Phase | Status | Measured results |
+|---|---|---|
+| 0a WSL2 and tooling | **Done** (confirmed by you, pasted output) | `free -h`: Mem total 11Gi, available 11Gi, swap 8.0Gi. `nproc`: 8. WSL 3.0.3.0 (unchanged), no `.wslconfig` warning. `nvidia-smi` works in Ubuntu and Docker (RTX 4060, ~1.1 GB VRAM in use at idle). Python 3.11.18, uv, gcc, git installed |
+| 0b uv project and quality skeleton | **Done** (`dvc init` run by you) | `uv sync` resolved 248 packages; `check_env.py`: torch 2.14.1+cu130, torchvision 0.29.1+cu130, CUDA available (RTX 4060 Laptop), onnxscript 0.7.2, ORT 1.31.1 with CUDA provider, anomalib 2.7.0, transformers 5.22.1. `uv sync --locked` reproduces from `uv.lock`. Dummy MLflow run logged seed, git hash (`no-commit` until your first commit) and dataset version (`unversioned`). First `uv sync` took 9m23s; `.venv` is 7.0 GB. Gates at end of 0b: 7 tests pass, ruff and mypy clean |
+| 0c Spike | **Done**, details in `reports/spike_notes.md` | D-FINE-S forward OK, logits (1,300,80), peak 124 MiB. **Dynamo export + ORT CUDA passes** (opset 20, max diff 7e-5 logits / 1e-5 boxes) but only with `TRANSFORMERS_DISABLE_TORCH_CHECK=1`, `optimize=False`, and ORT `use_tf32=0`; with ORT's default TF32 outputs differ completely (mAP effect unmeasured, a Phase 5a task). AnomalyDINO encoder pinned: `vit_small_patch14_dinov2`, features (B,324,384). Cashew 5-shot smoke image AUROC 0.9304, 586 MiB (smoke only). TensorRT EP listed by ORT, untested. VisA: sha256 verified, `dvc add` md5 `e01ee2ec…dir`. Gates: 14 tests in 5 s, ruff and mypy clean |
+| 1a onward | Not started | TODO |
+
+## Context
+
+DefectLens is a portfolio project for CV/ML engineering roles: a supervised detector for known
+defects plus an anomaly detector for unseen defects, exported to ONNX and served as an API. The
+project folder held only `CLAUDE.md` when this plan was written, so this is a greenfield build.
+
+**Revision 2 — your corrections applied:**
+
+1. **WSL2:** 12 GB cap kept, 8 processors, `autoMemoryReclaim=gradual` under `[experimental]`, full file
+   shown, and `free -h` expectations separate total from available (Phase 0a).
+2. **Dependencies:** `onnxscript` is explicit, torchvision is pinned to match torch, and the AnomalyDINO
+   encoder name is settled from installed source with a real forward pass (Sections 4 and Phase 0c).
+3. **TensorRT:** ONNX Runtime CUDA is the guaranteed deployment target. TensorRT FP16/INT8 is an optional,
+   time-boxed experiment that can't block the MVP (Sections 3–4, Phases 0c, 5a, 5b, 6, risks 1–2).
+4. **VisA evaluation:** a named `threshold_calibration` subset and an untouched `threshold_evaluation`
+   subset, with selection and evaluation as separate steps (Section 3, Phases 1a, 3a, 4a).
+5. **Licensing:** uncertain dataset terms are documented, and no license is assumed for trained weights
+   (Section 3, Phases 1a, 6c).
+
+**Git boundary:** Claude runs no git command that changes the repo; you run `git init`, `dvc init`, commits
+and pushes.
+
+Resource figures below are **estimates**, not measurements. Each is replaced by the measured value
+when its phase finishes. No accuracy numbers appear here, on purpose.
+
+---
+
+## 1. Environment findings (checked 2026-11-01)
+
+- **GPU:** RTX 4060 Laptop, 8188 MiB, driver 621.01, CUDA 13.5. 525 MiB in use at idle. Visible in
+  both Windows and WSL.
+- **OS:** Windows 11 Home build 26200; this session runs in Git Bash on native Windows.
+- **WSL2 is already partly set up, contrary to your note:** `Ubuntu` 26.04.1 (default distro, WSL 2,
+  user `svkaw`, created about Oct 20) and `docker-desktop` both exist. WSL is version 3.0.3.0. No
+  `.wslconfig`, so WSL sees only 7 GB RAM and 2 GB swap.
+- **Python:** Windows has 3.15 (default), 3.14, 3.12. WSL Ubuntu has 3.14. **Neither has 3.11**; uv
+  will install it.
+- **Tools:** git present on both (2.56 Windows, 2.53 WSL). **uv missing on both.** gcc missing on both.
+  Docker CLI 29.9.1 on Windows, but the daemon is not running. In Ubuntu, `docker` printed a blank
+  version, which suggests Docker Desktop's stub, meaning WSL integration is off.
+- **Disk:** 775 GB free on C:, which also backs the WSL disk.
+- **Repo:** not a git repository yet.
+
+Not checked: one combined command was blocked by the permission classifier, so I re-ran narrower
+read-only versions. That leaves host CPU, total RAM and firmware virtualization unread from Windows.
+CPU and RAM below come from `CLAUDE.md`; WSL's 7 GB fits the 50% default on 16 GB. Reading Ubuntu
+started the stopped distro; nothing else changed apart from its `.motd_shown` timestamp.
+
+---
+
+## 2. Recommendation: build inside WSL2
+
+| Factor | WSL2 | Native Windows |
+|---|---|---|
+| TensorRT | Main ORT/TensorRT path, with no DLL or PATH juggling | Wheels exist, but more manual setup |
+| Docker | Same Linux userland as the image; Docker Desktop already uses WSL | Containers still run in WSL |
+| anomalib | Linux-first; `fork` workers and symlinks work | `spawn` workers re-import torch per worker, costing RAM |
+| 16 GB RAM | Needs a cap, costs some RAM for the VM | Slightly lighter |
+| CI | Same as `ubuntu-latest` | Differs |
+| GPU speed | NVIDIA reports at least 90% of native even in its worst-case test; long jobs near native | Native |
+
+**Decisions:**
+
+- Keep the repo and data on the **ext4 disk (`~/projects/DefectLens`)**, never `/mnt/c`, which is
+  several times slower for small files.
+- Run Claude Code **inside Ubuntu** so tools and paths match. This Windows session can't run the
+  project directly.
+- Cap WSL at 12 GB, leaving 4 GB for Windows, and start with 8 processors. Docker Desktop shares this VM
+  and cap, so stop containers during training.
+
+---
+
+## 3. Where I disagree with the spec
+
+**Changes that affect the design**
+
+1. **The MVP never shows "known + unseen" on the same data.** The detector sees steel and the anomaly
+   models see VisA, so nothing proves the anomaly path catches what the detector misses. That is the
+   project's headline claim. **Added Phase 4b:** a leave-one-defect-type-out test on VisA. Cuttable,
+   but then the README must not make that claim until Phase 7.
+2. **NEU-DET has no defect-free images** (300 defect images per class), so an image-level false alarm
+   can't be measured on it. Cost-based thresholds therefore run on **VisA** (image level), and on
+   NEU-DET at box level only. The README will state that detector false-alarm rates on good steel are
+   unmeasured.
+3. **VisA has no validation set with anomalies**; training is normal-only and test is mixed. Thresholds
+   need labelled anomalies, so the official `1cls` test set is split once, 50/50, stratified by category
+   and label, into two named subsets with different jobs:
+
+   | Subset | Allowed use | Forbidden |
+   |---|---|---|
+   | `threshold_calibration` | Choosing thresholds, cost operating points, model and hyperparameter choices | Reporting final thresholded results |
+   | `threshold_evaluation` (untouched) | One final thresholded evaluation with frozen thresholds | Any selection or tuning, including after seeing its errors |
+
+   - The official full `1cls` test is reserved for **threshold-free** AUROC/AUPRO, for comparison with
+     literature. It overlaps calibration, so it never produces a thresholded number and never drives a choice.
+   - All selection happens first, and thresholds are frozen to a file before evaluation starts.
+4. **INT8 calibration in TensorRT is deprecated** (since 10.1) in favour of explicit quantization. The
+   optional INT8 experiment uses **QDQ ONNX**, not `trt_int8_enable`. Accuracy loss on D-FINE's transformer
+   decoder is a real unknown, and a documented loss is still a valid result.
+5. **Not every model belongs in the deployment table.** PatchCore and AnomalyDINO do a kNN lookup against
+   a memory bank, which suits GPU compilers poorly, and Faster R-CNN has dynamic control flow.
+   **Required ORT CUDA targets: D-FINE and EfficientAD.** The others get an ONNX + ORT CUDA attempt, with
+   failures recorded. Optional TensorRT runs cover D-FINE and EfficientAD only.
+6. **Test ONNX export in Phase 0, not Phase 5.** ONNX on ORT CUDA is the guaranteed deployment target, so
+   a failure there could change the choice of detector.
+
+**Scope and method**
+
+7. **The D-FINE vs RT-DETRv2 choice:** D-FINE-S is primary. RT-DETRv2 runs only if D-FINE fails the
+   export spike. Doing both adds a session without adding insight.
+8. **The classical baseline has no class output.** It gets class-agnostic AP and recall, compared
+   against class-agnostic scores from the deep models, not per-class mAP.
+9. **"PRO" means AUPRO**, integrated to FPR 0.3 (anomalib's convention), stated in the report.
+10. **The cost ratio is an assumption** with no real factory number behind it. I'll report 5:1, 10:1
+    and 50:1 sweeps, and label them as such.
+11. **Few-shot needs repeats:** one reference image is highly sample-dependent, so 5 fixed draws per
+    shot count, reported as mean ± std.
+12. **The "backbone" ablation** is PatchCore/WRN50 vs AnomalyDINO/DINOv2-S. Those backbones differ along
+    with their methods, so the table will say so rather than imply a clean single-variable test.
+13. **Phase 9 has no video source.** Default: a synthetic conveyor video built by scrolling dataset
+    images, which also gives ground-truth IDs and so real tracking metrics.
+14. **Own images (Phase 7):** 50–100 photos are too few to train and test on separately. They are for
+    a same-domain demo and a domain-shift test, with results flagged as small-sample.
+15. **Phases 0, 1, 2a, 3, 5, 6, 7 and 8 are split** to fit one session each.
+
+**Proposed `CLAUDE.md` edit (yours to accept):** MLflow moved to SQLite as default in 3.7 and put the
+file backend in maintenance mode. Use `sqlite:///mlruns/mlflow.db` with artifacts in `mlruns/artifacts`.
+Everything stays local and under the git-ignored `mlruns/`.
+
+**Dataset usage terms are uncertain, and the plan doesn't resolve them:**
+
+- **NEU-DET:** the official page I read asks for citation and states no license terms; a third-party card
+  says it has no stated license.
+- **VisA:** sources I found conflict (CC BY 4.0 vs CC BY-NC-SA 4.0).
+- **MVTec AD and pretrained checkpoints:** terms not checked yet; recorded when first used.
+- **Handling:** Phase 1a records each source's exact wording, URL and retrieval date in `docs/DATA_TERMS.md`,
+  with unresolved items marked unresolved. Datasets are not redistributed, the DVC remote stays local, and the
+  README links to official sources.
+- **Trained weights:** no license or usage status is assumed either way. The README says their terms are
+  unresolved and that the repo's code license doesn't cover them. Weights stay out of git and the Docker image.
+  Whether to publish any is your decision, once the terms are checked.
+
+---
+
+## 4. Version baseline (checked 2026-11-01; freeze in `uv.lock` at Phase 0b)
+
+| Package | Version | Note |
+|---|---|---|
+| Python | 3.11 | Now the minimum for torch, transformers and ORT, so there's no margin to go lower |
+| torch | ==2.14.1+cu130 | PyPI has 2.15.0, but the cu130 index stops at 2.14.1 and that index is what matters |
+| torchvision | ==0.29.1+cu130 | Pinned as torch's pair: its metadata requires `torch>=2.14.0`, and the cu130 index has a `cp311` wheel. That bound is only a minimum, so the exact pin is what keeps them matched |
+| anomalib | ==2.7.0 | Needs torch ≥2.10. AnomalyDINO arrived in 2.3.0 |
+| transformers | 5.22.1 | `DFineForObjectDetection` |
+| onnx | latest at lock | Required for export |
+| onnxscript | latest at lock | **Explicit direct dependency** for the Dynamo ONNX export path. anomalib lists it only under its `openvino` extra, which this project doesn't install |
+| onnxruntime-gpu | 1.31.1 | **Guaranteed deployment target.** CUDA 13 deps via the `cuda` extra; has `cp311` manylinux wheels |
+| tensorrt (PyPI) | 11.4.0.106 | Optional experiment only, not installed by default. **sdist only**, no wheels |
+
+**Deployment target:** ONNX Runtime with `CUDAExecutionProvider` is the guaranteed path for the benchmark,
+API, Docker image and MVP. TensorRT FP16 and INT8 are optional. No MVP phase depends on them.
+
+**Env layout (uv):** dependency groups `cu130` (default, local) and `cpu` (CI), declared as conflicting,
+plus `serve` for a slim image with no torch. The `cpu` group uses the same torch and torchvision versions from
+the CPU index. `uv run pytest` must work with no flags.
+
+**Execution key:** 🟢 Claude runs it (under about 5 min). 🔴 You run it and paste the output. Fix seeds in
+every run; log config, git hash and dataset version. At each phase end: `uv run pytest`, `uv run ruff
+check .`, `uv run mypy src` pass, `PLAN.md` and README updated, changed files plus a commit message
+handed to you.
+
+---
+
+## 5. Phases
+
+### Phase 0a — WSL2 and tooling (all 🔴, needs sudo and your Windows settings)
+**Goal:** a capped, GPU-enabled WSL2 with the repo on ext4.
+**Packages:** apt `build-essential libgl1 libglib2.0-0`; uv; Claude Code in WSL.
+**Files:** `C:\Users\svkaw\.wslconfig` (outside the repo). This is the full file:
+```ini
+[wsl2]
+memory=12GB
+processors=8
+swap=8GB
+
+[experimental]
+autoMemoryReclaim=gradual
+```
+**`autoMemoryReclaim` placement, checked against your setup:** you're right. Your installed WSL is 3.0.3.0, and
+Microsoft's `.wslconfig` reference (updated 2026-10-16) lists this key under `[experimental]`, with `disabled`,
+`gradual` and `dropCache` as values and `dropCache` as the default. The reference doesn't tie that to a specific
+WSL version, and I can't test it until the file exists, so the first step after restart is to watch for any
+`.wslconfig` warning from WSL. `memory`, `processors` and `swap` are confirmed under `[wsl2]`.
+
+**Commands** — in PowerShell, after saving the file:
+```powershell
+wsl --update
+```
+```powershell
+wsl --version
+```
+```powershell
+wsl --shutdown
+```
+Check the WSL version again after the update. If it changed from 3.0.3.0, recheck the key against the current
+docs. Then in Ubuntu:
+```bash
+free -h
+```
+```bash
+nproc
+```
+**Expected from `free -h`:**
+- `Mem:` **total** just under 12 Gi, because the kernel reserves a little.
+- `Mem:` **available** is lower than total and varies with load. It's the number that shows usable memory; at
+  idle it should sit close to total.
+- `Swap:` total about 8 Gi.
+- A small `free` column with large `buff/cache` is normal after heavy file reads. `gradual` releases that cache
+  slowly once WSL has been idle, so judge memory by `available`, not `free`.
+
+`nproc` should print 8. Then:
+```bash
+sudo apt update && sudo apt install -y build-essential libgl1 libglib2.0-0
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv python install 3.11
+mkdir -p ~/projects && cp -r /mnt/c/Users/svkaw/Documents/Projects/DefectLens ~/projects/
+cd ~/projects/DefectLens && git init
+```
+Install Claude Code in Ubuntu and sign in yourself, then enable Docker Desktop → Settings → Resources →
+WSL Integration → Ubuntu.
+```bash
+nvidia-smi
+docker run --rm --gpus=all ubuntu nvidia-smi
+```
+**Expected:** no `.wslconfig` warning at start; both `nvidia-smi` calls list the RTX 4060.
+**Don't:** install NVIDIA Linux drivers or apt's CUDA toolkit in WSL. The Windows driver is the only
+one needed, and PyTorch bundles its own runtime.
+**Done when:** `free -h` and `nproc` match the above, GPU checks pass, gcc and uv work, `claude` starts in
+`~/projects/DefectLens`. After you finish, you paste the `free -h`, `nproc` and `wsl --version` output.
+**Resources:** no GPU load; 30–45 min of your time, mostly downloads. Raising processors above 8 later is a
+one-line change, if CPU-bound data loading turns out to be the bottleneck.
+
+### Phase 0b — uv project and quality skeleton (🟢)
+**Goal:** a locked env with CUDA torch and working lint, type and test gates.
+**Packages:** `torch==2.14.1 torchvision==0.29.1 transformers timm anomalib==2.7.0 onnx onnxscript
+onnxruntime-gpu[cuda] opencv-python-headless scikit-image albumentations pycocotools hydra-core mlflow dvc
+fastapi gradio`; dev `pytest ruff mypy`. No TensorRT package here.
+**Files:** `pyproject.toml`, `uv.lock`, `.python-version`, `.gitignore`, `.dvcignore`,
+`src/defectlens/{__init__,seed,tracking}.py`, package `__init__`s per the repo layout, `configs/config.yaml`,
+`scripts/check_env.py`, `tests/test_seed.py`, `tests/test_tracking.py`, `PLAN.md`, `README.md` stub.
+**Commands:**
+```bash
+uv sync
+uv run python scripts/check_env.py
+uv run pytest && uv run ruff check . && uv run mypy src
+```
+You run `dvc init` (it stages files in git):
+```bash
+uv run dvc init
+```
+**Expected:** `check_env` prints torch `2.14.1+cu130`, torchvision `0.29.1+cu130`, CUDA available, the GPU
+name, `onnxscript` importable, and the ORT provider list including `CUDAExecutionProvider`. Tests pass in under 60 s.
+**Done when:** the env reproduces from `uv.lock`, a dummy MLflow run logs config + git hash + dataset
+version.
+**Resources:** under 1 GB VRAM, 3 GB RAM, about 10 min; 8–10 GB of disk for the env.
+
+### Phase 0c — Spike: prove the risky paths (🟢)
+**Goal:** run each high-risk piece once before building on it.
+**Packages:** none new.
+**Files:** `scripts/spike_dfine.py`, `scripts/spike_anomalydino.py`, `scripts/spike_export.py`,
+`scripts/download_visa.py`, `src/defectlens/data/download.py`, `tests/test_download.py`, `reports/spike_notes.md`.
+**Commands:**
+```bash
+uv run python scripts/download_visa.py
+uv run python scripts/spike_dfine.py
+uv run python scripts/spike_export.py
+uv run python scripts/spike_anomalydino.py category=cashew shots=5
+uv run dvc add data/raw/visa
+```
+**Expected:**
+- D-FINE-S: logits and box shapes printed; peak VRAM logged.
+- **Export (required):** the Dynamo path, with `onnxscript`, writes an ONNX file. It loads in ORT and outputs
+  match PyTorch within tolerance on `CUDAExecutionProvider`.
+- **TensorRT probe (informational, can't fail this phase):** lists whether `TensorrtExecutionProvider` is
+  present, without installing anything extra.
+- **AnomalyDINO encoder, in order, before any data is used:**
+  1. Print `anomalib.__version__` (must be 2.7.0) and the installed `anomaly_dino` source path.
+  2. Read the `encoder_name` default from that installed `lightning_model.py` and `torch_model.py`, and use
+     `inspect.signature` to confirm it. This is the authority, not the docs.
+  3. Import the class, instantiate it, and confirm timm resolves the name.
+  4. Run a real forward pass on a dummy tensor, and print the feature shape.
+- AnomalyDINO end-to-end: image AUROC printed on `cashew` test. This is a smoke value, not a reported result.
+
+**Encoder evidence so far:** anomalib's default-branch source uses `vit_small_patch14_dinov2`, matching the
+reference docs. The `v2.7.0` tag URLs returned 404, so the release itself is unconfirmed. Also, the code only
+checks that the name contains "dino", so `dinov2_vit_small_14` would pass that check; only steps 3–4 prove a name.
+
+**Done when:** D-FINE, Dynamo export + ORT CUDA, and AnomalyDINO all ran; the encoder name is pinned in config
+from installed source. `reports/spike_notes.md` records versions, peak VRAM, opset, the encoder name and the
+TensorRT probe result. If D-FINE can't export to ORT CUDA, switch to RT-DETRv2 here.
+**Resources:** D-FINE about 1–2 GB VRAM, 1 min. AnomalyDINO about 1–2 GB VRAM, 4–6 GB RAM, 2–4 min. VisA
+download 10–30 min, about 2 GB (unverified size, plus a prepared copy).
+
+### Phase 1a — Data: NEU-DET, COCO, fixed splits (🟢, with one possible 🔴 manual download)
+**Goal:** both datasets versioned, with saved splits.
+**Packages:** `gdown`.
+**Files:** `src/defectlens/data/{neu_det,coco,splits,visa_splits}.py`, `scripts/{download_neu_det,prepare_data}.py`,
+`configs/data/{neu_det,visa}.yaml`, `data/splits/*.json`, `docs/DATA_TERMS.md`, `tests/test_{neu_det,coco,splits}.py`,
+tiny XML fixtures.
+**Commands:**
+```bash
+uv run python scripts/download_neu_det.py
+uv run python scripts/prepare_data.py
+uv run dvc add data/raw/neu_det data/processed data/splits
+```
+**Expected:** 1,800 images, 6 classes; stratified 70/15/15 → 1,260 / 270 / 270. Each `data/splits/visa_<category>.json`
+holds `train`, `threshold_calibration` and `threshold_evaluation`, the last two from a 50/50 split of `1cls` test,
+per category and label. Validator prints no empty, out-of-bounds or duplicate boxes, and no image in two subsets.
+Confirm the raw annotation format once downloaded (likely Pascal VOC XML).
+**Start with 4 VisA categories:** `cashew`, `candle`, `pcb1`, `macaroni2` (single object, multi-instance,
+complex, hard).
+**Done when:** splits are saved and hash-tracked; re-running gives identical files; `docs/DATA_TERMS.md` records
+each dataset's exact wording, URL, retrieval date and open questions; tests pass.
+**Resources:** CPU only, under 2 GB RAM, under 5 min after download.
+
+### Phase 1b — OpenCV preprocessing (🟢)
+**Goal:** one preprocessing path, shared by training and serving.
+**Packages:** none.
+**Files:** `src/defectlens/preprocess/{resize,clahe,roi,pipeline}.py`, `configs/preprocess/default.yaml`,
+`scripts/preview_preprocess.py`, `tests/test_preprocess.py`, `reports/figures/preprocess_grid.png`.
+**Commands:**
+```bash
+uv run python scripts/preview_preprocess.py
+uv run pytest tests/test_preprocess.py
+```
+**Expected:** a before/after grid; tests cover box remapping after resize and crop, grayscale→3-channel,
+and CLAHE determinism.
+**Done when:** boxes stay aligned through every transform; all three gates pass. Calibration stays in Phase 7.
+**Resources:** CPU only, 1 GB RAM, under 1 min.
+
+### Phase 2a.1 — Evaluation code and classical baseline (🟢)
+**Goal:** the evaluation code every detector uses, plus the first baseline.
+**Packages:** none.
+**Files:** `src/defectlens/eval/{detection,confusion,report}.py`, `src/defectlens/detection/classical.py`,
+`configs/model/classical.yaml`, `scripts/{evaluate,run_classical}.py`, `tests/test_{detection_metrics,confusion,classical}.py`.
+**Commands:**
+```bash
+uv run python scripts/run_classical.py
+```
+**Expected:** class-agnostic AP and recall on val/test, logged to MLflow. Thresholds tuned on val only.
+**Done when:** a hand-computed tiny fixture matches the metric code exactly, and a perfect prediction
+scores 1.0. Run first in the suite so later models inherit trusted metrics.
+**Resources:** CPU only, 2 GB RAM, under 2 min.
+
+### Phase 2a.2 — Faster R-CNN (🔴 training; 🟢 smoke)
+**Goal:** a CNN reference point, using ResNet50-FPN v2.
+**Packages:** none.
+**Files:** `src/defectlens/detection/{faster_rcnn,datamodule}.py`, `configs/model/faster_rcnn.yaml`,
+`scripts/train_detector.py`, `tests/test_faster_rcnn.py`.
+**Commands:**
+```bash
+uv run python scripts/train_detector.py model=faster_rcnn trainer.fast_dev_run=true
+uv run python scripts/train_detector.py model=faster_rcnn
+```
+**Expected:** smoke (🟢, under 2 min) ends with a valid eval dict. Full (🔴) logs loss, mAP@50, mAP@50:95
+and per-class recall per epoch to MLflow.
+**Done when:** the best-val checkpoint is evaluated once on test, and the run is logged.
+**Resources:** AMP, batch 4, input about 480: **3–4 GB VRAM, 6 GB RAM, 20–40 min** for 30 epochs.
+
+### Phase 2b.1 — D-FINE fine-tune (🔴 training; 🟢 smoke)
+**Goal:** train the main detector.
+**Packages:** none.
+**Files:** `src/defectlens/detection/dfine.py`, `configs/model/dfine_s.yaml`, `tests/test_dfine.py`
+(tiny random-weight config, no download).
+**Commands:**
+```bash
+uv run python scripts/train_detector.py model=dfine_s trainer.fast_dev_run=true
+uv run python scripts/train_detector.py model=dfine_s
+```
+**Done when:** a full run completes without OOM; the best-val checkpoint is saved; peak VRAM is logged.
+**Resources:** AMP, batch 8, accumulate 2, 640: **4–6 GB VRAM, 6–8 GB RAM, 45–90 min** for 60 epochs. OOM
+fallback: batch 4 with accumulate 4, then input 512, then D-FINE-N.
+
+### Phase 2b.2 — Comparison and confusion matrix (🟢)
+**Goal:** the results table.
+**Packages:** none.
+**Files:** `scripts/compare_detectors.py`, `reports/detection_comparison.md`, `reports/figures/confusion_*.png`.
+**Commands:**
+```bash
+uv run python scripts/compare_detectors.py
+```
+**Expected:** a table generated from MLflow, with no hand-typed numbers.
+**Done when:** the table covers all detectors, the confusion matrix includes a background row, and per-class
+recall is shown. Optional 🔴: 3 seeds on the best model, since 270 test images give noisy differences
+(adds 2× the run time).
+**Resources:** about 2 GB VRAM, under 3 min.
+
+### Phase 3a — PatchCore and AnomalyDINO (🔴 training; 🟢 smoke)
+**Goal:** the first two anomaly models, with metrics.
+**Packages:** none.
+**Files:** `src/defectlens/anomaly/{base,patchcore,anomaly_dino,datamodule}.py`, `src/defectlens/eval/anomaly.py`,
+`configs/model/{patchcore,anomaly_dino}.yaml`, `scripts/train_anomaly.py`, `tests/test_anomaly_{metrics,datamodule}.py`.
+**Commands:**
+```bash
+uv run python scripts/train_anomaly.py model=patchcore category=cashew
+uv run python scripts/train_anomaly.py -m model=patchcore,anomaly_dino category=cashew,candle,pcb1,macaroni2
+```
+**Expected:** threshold-free image AUROC, pixel AUROC and AUPRO per category, logged to MLflow, on the full
+official test and on `threshold_calibration`. Model and hyperparameter choices use `threshold_calibration` only.
+`threshold_evaluation` is not touched in Phase 3.
+**Done when:** each category has both models logged; heatmaps saved; anomalib's `val` data is explicitly
+`threshold_calibration`, so its adaptive threshold and normalization never see `threshold_evaluation`.
+**Resources:**
+- **PatchCore is the highest VRAM risk.** About 900 images × 784 patches × 1,536 dims × 4 bytes ≈ **4.3 GB**
+  before coreset, at input 224 (arithmetic, not measured). Use coreset ratio 0.01, input 224. **5–7.5 GB
+  VRAM, 8–10 GB RAM, 20–60 min** for 4 categories. Fallback: random-subsample patches, or run the coreset on CPU.
+- AnomalyDINO: **2–3 GB VRAM, 6 GB RAM, 15–30 min** for 4 categories.
+- Close other GPU apps first. Coverage of all 12 categories is a later repeat of the same command.
+
+### Phase 3b — EfficientAD (🔴 overnight; 🟢 smoke)
+**Goal:** the speed baseline.
+**Packages:** none. Imagenette downloads automatically (about 1.5 GB).
+**Files:** `src/defectlens/anomaly/efficientad.py`, `configs/model/efficientad.yaml`.
+**Commands:**
+```bash
+uv run python scripts/train_anomaly.py model=efficientad category=cashew trainer.max_steps=500
+uv run python scripts/train_anomaly.py -m model=efficientad category=cashew,candle,pcb1,macaroni2
+```
+**Done when:** all 4 categories are logged, batch size 1 as the method requires.
+**Resources:** model size S, 70k steps: **2–3 GB VRAM, 6 GB RAM, about 1–2 h per category, 4–8 h total.** Run
+overnight, plugged in.
+
+### Phase 3c — Few-shot curve (🔴)
+**Goal:** the 1/5/10-shot curve with AnomalyDINO.
+**Packages:** none.
+**Files:** `src/defectlens/anomaly/few_shot.py`, `scripts/few_shot.py`, `scripts/compare_anomaly.py`,
+`data/splits/few_shot_draws.json`, `tests/test_few_shot.py`, `reports/{anomaly_comparison.md,figures/few_shot_curve.png}`.
+**Commands:**
+```bash
+uv run python scripts/few_shot.py shots=1,5,10 draws=5
+uv run python scripts/compare_anomaly.py
+```
+**Expected:** a curve with error bars plus the three-model table, generated from MLflow.
+**Done when:** draws are saved to disk and reused, and the full-data run appears as the reference line.
+**Resources:** 4 categories × 3 shots × 5 draws = 60 runs: **1–2 GB VRAM, 6 GB RAM, 1–2 h.**
+
+### Phase 4a — Cost-based thresholds and error gallery (🟢, needs Phases 2–3 outputs)
+**Goal:** operating points chosen on calibration data, one untouched evaluation, then a look at the worst misses.
+**Packages:** none.
+**Files:** `src/defectlens/eval/{thresholds,gallery}.py`, `configs/cost/default.yaml`,
+`scripts/{select_thresholds,evaluate_thresholds,error_gallery}.py`, `reports/frozen_thresholds.json`,
+`tests/test_{thresholds,gallery}.py`, `reports/{thresholds.md,error_gallery.md}`.
+**Commands, in this order:**
+
+Step 1 reads only `threshold_calibration` (VisA) or `val` (NEU-DET), and writes the frozen file with its hash:
+```bash
+uv run python scripts/select_thresholds.py cost.fn_fp_ratio=5,10,50
+```
+Step 2 reads the frozen file and `threshold_evaluation` (VisA) or `test` (NEU-DET); it has no tuning options:
+```bash
+uv run python scripts/evaluate_thresholds.py
+```
+Step 3 runs last:
+```bash
+uv run python scripts/error_gallery.py top_k=20
+```
+**Expected:** a threshold per model and ratio, then one thresholded result table with the frozen file's hash logged.
+**Done when:**
+- Selection and evaluation are separate scripts with separate data access. Tests assert the selector rejects
+  evaluation data, and the evaluator refuses to run without a frozen file.
+- A second evaluation on changed thresholds is treated as a protocol breach and disclosed in `reports/thresholds.md`.
+- The gallery has written notes on failure patterns. Those notes don't feed back into any threshold; a later
+  change would need a new untouched subset, or a disclosed result.
+**Resources:** about 2 GB VRAM, 6 GB RAM, under 5 min.
+
+### Phase 4b — Leave-one-defect-type-out proof (mixed; cuttable, added by me)
+**Goal:** directly test the headline claim on one domain.
+**Packages:** none.
+**Files:** `src/defectlens/data/visa_to_coco.py` (masks → boxes), `src/defectlens/eval/unseen.py`,
+`configs/experiment/unseen_pcb1.yaml`, `scripts/run_unseen.py`, `tests/test_visa_to_coco.py`, `reports/unseen_defects.md`.
+**Commands:**
+```bash
+uv run python scripts/run_unseen.py category=pcb1 holdout=<defect_type>
+```
+**Expected:** detector vs anomaly recall on the held-out type, in the same table. Few images per defect type,
+so flag as small-sample.
+**Done when:** the table exists and the README claim matches what it shows, whichever way it falls.
+**Resources:** Faster R-CNN: 3–4 GB VRAM, about 10 min (🔴 if over 5 min).
+
+### Phase 5a — ONNX export and ORT CUDA (🟢) — **required, the guaranteed deployment target**
+**Goal:** verified ONNX models and the benchmark the MVP relies on.
+**Packages:** `onnxsim` if useful (`onnxscript` is already in place from Phase 0b).
+**Files:** `src/defectlens/export/{onnx_export,verify,benchmark}.py`, `configs/export/default.yaml`,
+`scripts/{export_onnx,benchmark}.py`, `tests/test_{export,benchmark}.py` (tiny CPU model), `reports/benchmark.md`.
+**Commands:**
+```bash
+uv run python scripts/export_onnx.py
+uv run python scripts/benchmark.py providers=cuda
+```
+**Expected:** PyTorch-vs-ORT output difference within tolerance per model. Protocol: batch 1, warm-up 50,
+500 runs, reporting p50/p95 ms and throughput, on `CUDAExecutionProvider`.
+**Done when:** D-FINE and EfficientAD are exported, verified and benchmarked on ORT CUDA, with accuracy compared
+to PyTorch. The others are attempted, failures recorded. **This gate alone lets Phase 6 start.** Note the numbers
+come from WSL.
+**Resources:** 2–3 GB VRAM, 6 GB RAM, 10–15 min split into short runs.
+
+### Phase 5b — TensorRT FP16 and INT8 (🟢 short runs; 🔴 if over 5 min) — **optional experiment**
+**Goal:** see how much latency TensorRT gains, without any risk to the MVP.
+**Rules:** one session, time-boxed. Runs after the MVP or in parallel with it; Phases 6a–6c don't depend on it.
+Any compatibility issue ends with a recorded reason, not a change to the core env. Install in a separate uv env,
+so the locked MVP env stays unchanged. The API, Docker image and CI never require TensorRT.
+**Packages:** the first working route from risk 1, in the separate env. Possibly `nvidia-modelopt` for QDQ
+(confirm first).
+**Files:** `src/defectlens/export/{quantize,tensorrt}.py`, `scripts/quantize.py`, `tests/test_quantize.py`
+(skipped when TensorRT isn't installed), `reports/benchmark_tensorrt.md`.
+**Commands:**
+```bash
+uv run python scripts/quantize.py
+uv run python scripts/benchmark.py providers=tensorrt precision=fp16,int8
+```
+**Expected:** a separate table per model and precision: ms per image, throughput, accuracy loss against ORT CUDA.
+INT8 calibration uses NEU-DET `val` or VisA `threshold_calibration` only.
+**Done when:** each row is measured, or marked "not run" with the reason. Stopping with no TensorRT numbers still
+counts, and the README then says so plainly.
+**Resources:** 2–4 GB VRAM, 8 GB RAM; first TensorRT engine build takes minutes; 15–30 min total.
+
+### Phase 6a — FastAPI (🟢)
+**Goal:** image in → defects, boxes, heatmap.
+**Packages:** `uvicorn python-multipart httpx` (test).
+**Files:** `src/defectlens/serve/{app,schemas,inference,model_registry}.py`, `configs/serve/default.yaml`,
+`scripts/serve.py`, `tests/test_api.py`.
+**Commands:**
+```bash
+uv run python scripts/serve.py
+curl -F image=@tests/fixtures/sample.jpg "localhost:8000/inspect?product=steel"
+```
+**Expected:** JSON with defects, boxes and scores, plus a base64 heatmap for anomaly products. `/health` reports
+the active provider, which is `CUDAExecutionProvider` by default, falling back to CPU.
+**Done when:** tests pass on CPU with a tiny ONNX model; errors are handled for bad images and unknown products.
+`product` selects the models, so steel and VisA products aren't fused across domains.
+**Resources:** 1–3 GB VRAM, 3 GB RAM, seconds per start.
+
+### Phase 6b — Gradio and Docker (🟢, 🔴 if builds exceed 5 min)
+**Goal:** a demo and a slim image.
+**Packages:** none new.
+**Files:** `src/defectlens/serve/demo.py`, `Dockerfile` (multi-stage, `serve` group, no torch), `.dockerignore`,
+`docker-compose.yml`, `scripts/docker_smoke.sh`.
+**Commands:**
+```bash
+docker build -t defectlens:local .
+docker run --rm --gpus=all -p 8000:8000 -v "$PWD/models:/app/models:ro" defectlens:local
+bash scripts/docker_smoke.sh
+```
+**Expected:** `/health` responds and an `/inspect` call succeeds, with `CUDAExecutionProvider` active. Weights are
+mounted, not baked in. The image contains no TensorRT.
+**Done when:** the smoke script passes; image size is recorded.
+**Resources:** 2 GB VRAM, 4 GB RAM; build 5–15 min first time.
+
+### Phase 6c — CI and README (🟢; you commit and push) — **end of MVP**
+**Goal:** green CI and a README built from measured results.
+**Packages:** none new.
+**Files:** `.github/workflows/ci.yml` (uv, `cpu` group, ruff, mypy, pytest, Docker build), `README.md`,
+`scripts/build_report_tables.py`, `reports/figures/*`.
+**Commands:**
+```bash
+uv run python scripts/build_report_tables.py
+```
+**Expected:** README tables generated from `reports/`; any unmeasured number stays a TODO.
+**Done when:** you push and CI is green; a clean clone follows the README to a running API; every number
+traces to an MLflow run or pasted output. The README links `docs/DATA_TERMS.md`, cites the datasets, describes
+open questions as open, and says trained-weight terms are unresolved and not covered by the code license.
+TensorRT results appear only if Phase 5b produced them.
+**Resources:** CPU only; CI target under 10 min.
+
+--- **Extensions below** ---
+
+### Phase 7a — Own images and labelling (🔴, your time)
+**Goal:** a labelled same-domain dataset.
+**Packages:** none in the project env, because Label Studio's pins are heavy. Run it via `uvx` or Docker.
+**Files:** `configs/data/own.yaml`, `scripts/import_label_studio.py`, `docs/capture_protocol.md`, `tests/test_import_label_studio.py`.
+**Commands:**
+```bash
+uvx label-studio
+uv run python scripts/import_label_studio.py path/to/export.json
+uv run dvc add data/raw/own
+```
+**Expected:** a validated COCO file with normal and defect images, in fixed splits.
+**Done when:** 50–100 images labelled, at least some normal-only images exist for anomaly training.
+**Resources:** CPU only; 2–3 h of capture and labelling.
+
+### Phase 7b — Calibration and own-data evaluation (🟢 + 🔴)
+**Goal:** undistorted input and a same-domain end-to-end test.
+**Packages:** none.
+**Files:** `src/defectlens/preprocess/calibration.py`, `scripts/{calibrate,evaluate_own}.py`, `tests/test_calibration.py`.
+**Commands:**
+```bash
+uv run python scripts/calibrate.py path/to/checkerboards
+uv run python scripts/evaluate_own.py
+```
+**Expected:** reprojection error printed; detector plus anomaly results on the same images.
+**Done when:** detector and anomaly routes run on one domain; the README flags it as small-sample.
+**Resources:** 3–4 GB VRAM, about 10 min (🔴 if fine-tuning runs longer).
+
+### Phase 8a — CutPaste/DRAEM synthetic defects and ablation (🟢 code; 🔴 runs)
+**Goal:** measure whether synthetic data improves recall on real defects.
+**Packages:** none.
+**Files:** `src/defectlens/anomaly/synthetic.py`, `configs/experiment/ablation.yaml`, `scripts/ablation.py`,
+`tests/test_synthetic.py`, `reports/ablation.md`.
+**Commands:**
+```bash
+uv run python scripts/ablation.py -m synthetic=off,cutpaste,draem
+```
+**Expected:** an ablation table across backbone, shots, synthetic on/off and optionally CLAHE on/off.
+**Done when:** real-defect recall is compared at a threshold chosen on `threshold_calibration`, even if the
+effect is null. `threshold_evaluation` is read once per configuration, and that repeated use is disclosed.
+**Resources:** 3–5 GB VRAM, 8 GB RAM, 2–4 h.
+
+### Phase 8b — Stable Diffusion inpainting, optional (🔴)
+**Goal:** a test of whether generated defects add anything beyond 8a.
+**Packages:** `diffusers accelerate`.
+**Files:** `src/defectlens/anomaly/sd_inpaint.py`, `scripts/generate_sd_defects.py`, `configs/synth/sd.yaml`.
+**Commands:**
+```bash
+uv run python scripts/generate_sd_defects.py n=200
+```
+**Done when:** an extra row in the ablation table. Skip if 8a shows no benefit.
+**Resources:** SD 1.5 inpainting, FP16, attention slicing: **4–6 GB VRAM, 8 GB RAM, 30–60 min** for 200 images.
+
+### Phase 9 — Tracking (🟢 short clips)
+**Goal:** stable defect IDs across frames.
+**Packages:** `supervision`.
+**Files:** `src/defectlens/tracking_video/{synth_video,track}.py`, `scripts/{make_conveyor_video,track_video}.py`,
+`tests/test_track.py`, `reports/tracking.md`.
+**Commands:**
+```bash
+uv run python scripts/make_conveyor_video.py
+uv run python scripts/track_video.py
+```
+**Expected:** an annotated video plus MOTA and IDF1 from synthetic ground truth, labelled as synthetic.
+**Done when:** IDs persist, and FPS is measured with the ONNX detector.
+**Resources:** 2–3 GB VRAM, 4 GB RAM, under 5 min per clip.
+
+---
+
+## 6. Run summary
+
+| Run | VRAM | RAM | Time | Who |
+|---|---|---|---|---|
+| Spikes (0c) | 1–2 GB | 4–6 GB | under 5 min each | 🟢 |
+| Faster R-CNN | 3–4 GB | 6 GB | 20–40 min | 🔴 |
+| D-FINE-S | 4–6 GB | 6–8 GB | 45–90 min | 🔴 |
+| PatchCore, 4 categories | **5–7.5 GB** | 8–10 GB | 20–60 min | 🔴 |
+| AnomalyDINO, 4 categories | 2–3 GB | 6 GB | 15–30 min | 🔴 |
+| EfficientAD, 4 categories | 2–3 GB | 6 GB | **4–8 h** | 🔴 overnight |
+| Few-shot, 60 runs | 1–2 GB | 6 GB | 1–2 h | 🔴 |
+| ORT CUDA benchmark (required) | 2–3 GB | 6 GB | 10–15 min | 🟢 |
+| TensorRT benchmarks (optional) | 2–4 GB | 8 GB | 15–30 min | 🟢/🔴 |
+| Ablation | 3–5 GB | 8 GB | 2–4 h | 🔴 |
+
+Before long runs: plug in, set a performance power mode, disable sleep, close browsers and overlays.
+
+---
+
+## 7. Top risks
+
+| # | Risk | Evidence | Fallback |
+|---|---|---|---|
+| 1 | **TensorRT EP route is unclear (no MVP impact)** | ORT docs' table stops at 1.22 / TensorRT 10.9 / CUDA 12, while 1.31.1 wheels pull CUDA 13. PyPI metadata doesn't mention TensorRT, and `tensorrt` is sdist-only | ORT CUDA ships regardless. Phase 5b tries, in order, in a separate env and within its time box: `TensorrtExecutionProvider` in `onnxruntime-gpu` → NVIDIA's `onnxruntime-ep-nv-tensorrt-rtx-cu12` 0.5.0 (bundled runtime, Linux and Windows wheels, FP16/QDQ support unconfirmed) → native TensorRT → older pinned ORT. If none works, record why and stop |
+| 2 | INT8 ruins D-FINE accuracy (no MVP impact) | Implicit path deprecated; transformer INT8 has a history of regressions | Exclude sensitive nodes from QDQ, use partial quantization; otherwise report the loss |
+| 3 | D-FINE ONNX export fails on ORT CUDA (**0c: exports and matches, with the three caveats in `reports/spike_notes.md`; D-FINE stays primary**) | No official documented HF `small` export found; Dynamo path depends on `onnxscript` | Caught in 0c. Next: RT-DETRv2, then upstream `Peterande/D-FINE` export. This is the deployment blocker to watch |
+| 4 | Library versions drift | Fast-moving; PyPI torch already ahead of cu130 index | `uv.lock` frozen at 0b; upgrades only as a deliberate step |
+| 5 | Windows vs WSL2 file and memory issues | `/mnt/c` slow; shared GPU memory is slow past VRAM | ext4 repo, 12 GB cap, 8 GB swap, 2–4 workers. Native Windows only if WSL GPU breaks |
+| 6 | VRAM limits | PatchCore bank ≈ 4.3 GB before model | AMP, accumulation, patch subsampling, CPU coreset; D-FINE-N |
+| 7 | 16 GB RAM pressure | WSL cap leaves 12 GB | Few workers, one job at a time, Docker stopped during training |
+| 8 | NEU-DET download fails | IEEE DataPort needs a subscription; no plain HF mirror | Official Google Drive link via `gdown`; else manual browser download into `data/raw/`; else Baidu link. A community Kaggle copy is unverified |
+| 9 | VisA download fails | Official AWS bucket, no account needed | anomalib auto-download; DagsHub mirror |
+| 10 | AnomalyDINO API differs in 2.7.0 | Docs show two encoder names; `v2.7.0` source unread; substring check accepts both; ONNX untested | Settled from installed source and a forward pass in 0c. Few-shot uses saved image lists, so export isn't required |
+| 11 | Thermal throttling | Laptop, 109 W cap | Plugged in, raised stand, runs resume from checkpoints |
+| 12 | Docker GPU in WSL | Integration appears off | Fixed in 0a; CPU image as a working fallback for the demo |
+| 13 | Dataset terms stay unresolved | NEU-DET terms unstated; VisA sources conflict | Document as open in `docs/DATA_TERMS.md`; no redistribution; no assumption on weights; publishing weights stays your decision |
+
+---
+
+## 8. Verification
+
+- **Each phase:** `uv run pytest` (under 60 s, CPU), `uv run ruff check .`, `uv run mypy src`, plus that phase's
+  "done when" list.
+- **Data integrity:** no image in two subsets; split hashes logged with every run. Tests block threshold selection
+  on `threshold_evaluation` or `test`, and block evaluation without a frozen threshold file.
+- **Metrics:** hand-computed fixtures for detection and threshold code before any model is compared.
+- **Number provenance:** report tables are generated from MLflow or pasted output, never typed by hand.
+- **MVP end-to-end:** fresh clone → `uv sync` → `docker run` → `curl /inspect` on a steel image and a VisA image
+  returns boxes and a heatmap, served by `CUDAExecutionProvider` → CI green after your push. TensorRT isn't part
+  of this check.
+
+---
+
+## 9. Sources
+
+- [anomalib releases](https://www.github.com/openvinotoolkit/anomalib/releases), [AnomalyDINO docs](https://anomalib.readthedocs.io/en/latest/markdown/guides/reference/models/image/anomaly_dino.html), [anomalib on PyPI](https://pypi.org/project/anomalib/)
+- [onnxruntime-gpu on PyPI](https://pypi.org/project/onnxruntime-gpu/), [ORT TensorRT EP docs](https://onnxruntime.ai/docs/execution-providers/TensorRT-ExecutionProvider.html), [TensorRT-RTX EP plugin](https://pypi.org/project/onnxruntime-ep-nv-tensorrt-rtx-cu12/), [tensorrt on PyPI](https://pypi.org/project/tensorrt/)
+- [TensorRT 10.1.0 release notes](https://docs.nvidia.com/deeplearning/tensorrt/latest/getting-started/release-notes-10/10.1.0.html)
+- [PyTorch cu130 wheels](https://download.pytorch.org/whl/cu130/torch/), [torchvision cu130 wheels](https://download.pytorch.org/whl/cu130/torchvision/), [torchvision 0.29.1 metadata](https://pypi.org/project/torchvision/0.29.1/), [torch on PyPI](https://pypi.org/project/torch/), [transformers on PyPI](https://pypi.org/project/transformers/)
+- [Microsoft: WSL `.wslconfig` reference](https://learn.microsoft.com/en-us/windows/wsl/wsl-config), [WSL September 2023 update](https://devblogs.microsoft.com/commandline/windows-subsystem-for-linux-september-2023-update/)
+- [anomalib `anomaly_dino/torch_model.py`, default branch](https://raw.githubusercontent.com/open-edge-platform/anomalib/main/src/anomalib/models/image/anomaly_dino/torch_model.py), [`lightning_model.py`, default branch](https://raw.githubusercontent.com/open-edge-platform/anomalib/main/src/anomalib/models/image/anomaly_dino/lightning_model.py)
+- [D-FINE nano ONNX card](https://huggingface.co/onnx-community/dfine-nano-coco-ONNX)
+- [NEU database page (Kechen Song)](https://faculty.neu.edu.cn/songkechen/zh_CN/zhym/263269/list/index.htm), [IEEE DataPort NEU-DET](https://ieee-dataport.org/documents/neu-det), [dronefreak/NEU-DET card](https://huggingface.co/datasets/dronefreak/NEU-DET)
+- [VisA on AWS Open Data](https://registry.opendata.aws/visa), [anomalib VisA datamodule](https://anomalib.readthedocs.io/en/latest/markdown/guides/reference/data/datamodules/image/visa.html)
+- [NVIDIA: CUDA performance on WSL2](https://developer.nvidia.com/blog/leveling-up-cuda-performance-on-wsl2-with-new-enhancements), [WSL shared GPU memory discussion](https://github.com/microsoft/WSL/discussions/10452), [WSL2 setup guide (secondary source)](https://insiderllm.com/pdfs/wsl2-local-ai-windows-guide.pdf)
+- [MLflow backend store docs](https://mlflow.org/docs/latest/self-hosting/architecture/backend-store/)
