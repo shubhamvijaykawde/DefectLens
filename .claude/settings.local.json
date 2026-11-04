@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(cp \"/c/Users/svkaw/.claude/plans/pasted-content-id-1f2a-read-claude-md-wild-dewdrop.md\" \"/c/Users/svkaw/Documents/Projects/DefectLens/PLAN.md\" && ls -la /c/Users/svkaw/Documents/Projects/DefectLens)"
-    ]
-  }
-}

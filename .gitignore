@@ -20,3 +20,4 @@ models/
 *.ckpt
 *.onnx
 *.engine
+.claude/settings.local.json
