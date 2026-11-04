@@ -1,0 +1,6 @@
+<annotation><folder>cr</folder><filename>crazing_1.jpg</filename>
+<size><width>200</width><height>100</height><depth>1</depth></size>
+<object><name>crazing</name><bndbox><xmin>10</xmin><ymin>20</ymin><xmax>60</xmax><ymax>80</ymax></bndbox></object>
+<object><name>crazing</name><bndbox><xmin>10</xmin><ymin>20</ymin><xmax>60</xmax><ymax>80</ymax></bndbox></object>
+<object><name>patches</name><bndbox><xmin>100</xmin><ymin>0</ymin><xmax>150</xmax><ymax>50</ymax></bndbox></object>
+</annotation>

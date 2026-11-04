@@ -7,6 +7,7 @@ import http.client
 import tarfile
 import time
 import urllib.request
+import zipfile
 from pathlib import Path
 
 CHUNK = 1 << 20
@@ -75,3 +76,24 @@ def fetch_verified(url: str, sha256: str, dest: Path) -> Path:
         msg = f"SHA-256 mismatch for {url}: expected {sha256}, got {actual}. File removed."
         raise ValueError(msg)
     return path
+
+
+# NEU-DET: official Google Drive file linked from the NEU surface defect database page
+# (https://faculty.neu.edu.cn/songkechen/zh_CN/zhym/263269/list/index.htm, retrieved 2026-11-04).
+# The hash is of the file as served on that date (no publisher checksum exists); it detects
+# corruption and later changes, not tampering at the source.
+NEU_DET_GDRIVE_ID = "1qrdZlaDi272eA79b0uCwwqPrm2Q_WI3k"
+NEU_DET_SHA256 = "cf04bb0b05d364f23e05031b191b20b908a0e5eb11466df74ee7fba98ec835d5"
+
+
+def safe_extract_zip(archive: Path, out_dir: Path) -> None:
+    """Extract a zip, refusing absolute paths and ``..`` components."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    root = out_dir.resolve()
+    with zipfile.ZipFile(archive) as zf:
+        for name in zf.namelist():
+            target = (root / name).resolve()
+            if not target.is_relative_to(root):
+                msg = f"unsafe path in archive: {name}"
+                raise ValueError(msg)
+        zf.extractall(root)

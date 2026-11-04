@@ -1,0 +1,12 @@
+# One preprocessing path shared by training and serving (defectlens.preprocess.pipeline).
+# Order: ROI crop -> CLAHE -> letterbox resize -> 3 channels.
+size: 640            # D-FINE input; Faster R-CNN overrides to ~480 in its model config
+letterbox: true      # aspect ratio kept, pad with pad_value (stretching would break box mapping)
+pad_value: 114
+clahe:
+  enabled: false     # off by default: its effect is unmeasured; Phase 8a may ablate it
+  clip_limit: 2.0
+  tile_grid: [8, 8]
+roi: null            # [x0, y0, x1, y1] in original pixels; null = full image
+roi_min_visible: 0.5 # drop a box if less than this fraction of its area survives the crop
+three_channel: true  # replicate grayscale to 3 channels for ImageNet-pretrained backbones

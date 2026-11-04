@@ -1,0 +1,6 @@
+outs:
+- md5: 8c619473c5b5a844450f7e0a2267c35d.dir
+  size: 28201919
+  nfiles: 3600
+  hash: md5
+  path: neu_det

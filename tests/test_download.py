@@ -5,7 +5,13 @@ from pathlib import Path
 
 import pytest
 
-from defectlens.data.download import download, fetch_verified, safe_extract, sha256_file
+from defectlens.data.download import (
+    download,
+    fetch_verified,
+    safe_extract,
+    safe_extract_zip,
+    sha256_file,
+)
 
 
 def test_sha256_file(tmp_path: Path) -> None:
@@ -81,3 +87,18 @@ def test_download_resumes_after_interruption(
     out = dl.download(src.as_uri(), tmp_path / "got.bin")
     assert out.read_bytes() == b"0123456789"
     assert calls["n"] == 2
+
+
+def test_safe_extract_zip_rejects_traversal(tmp_path: Path) -> None:
+    import zipfile
+
+    z = tmp_path / "bad.zip"
+    with zipfile.ZipFile(z, "w") as zf:
+        zf.writestr("../evil.txt", "x")
+    with pytest.raises(ValueError, match="unsafe"):
+        safe_extract_zip(z, tmp_path / "out")
+    ok = tmp_path / "ok.zip"
+    with zipfile.ZipFile(ok, "w") as zf:
+        zf.writestr("a/b.txt", "x")
+    safe_extract_zip(ok, tmp_path / "out2")
+    assert (tmp_path / "out2" / "a" / "b.txt").read_text() == "x"

@@ -1,0 +1,9 @@
+# VisA, started with 4 categories (single object, multi-instance, complex, hard).
+name: visa
+raw_dir: data/raw/visa
+csv: data/raw/visa/split_csv/1cls.csv
+splits_dir: data/splits
+categories: [cashew, candle, pcb1, macaroni2]
+seed: 42
+# 50/50 split of the official 1cls test set, stratified by category and label.
+# threshold_calibration: choose thresholds/models. threshold_evaluation: one frozen-threshold run.

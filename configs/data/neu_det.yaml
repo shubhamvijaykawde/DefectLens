@@ -1,0 +1,7 @@
+# NEU-DET: 1,800 grayscale 200x200 steel images, 6 classes, Pascal VOC boxes.
+name: neu_det
+raw_dir: data/raw/neu_det/NEU-DET
+processed_dir: data/processed/neu_det
+splits_file: data/splits/neu_det.json
+seed: 42
+fractions: {train: 0.70, val: 0.15, test: 0.15}

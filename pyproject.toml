@@ -17,6 +17,7 @@ dependencies = [
     "hydra-core",
     "mlflow",
     "dvc",
+    "gdown>=6.5.1",
 ]
 
 [dependency-groups]
