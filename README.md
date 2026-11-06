@@ -6,8 +6,10 @@ detector for unseen defects (VisA), exported to ONNX and served as an API. Work 
 
 ## Status
 
-Phases 0a-0c (environment, project skeleton, risk spikes) and 1a-1b (data, splits, preprocessing) are done. No model has been trained or
-evaluated yet, so this README reports **no accuracy numbers**. TODO: results tables arrive with Phases 2-4.
+Phases 0a-0c (environment, project skeleton, risk spikes), 1a-1b (data, splits, preprocessing) and 2a.1
+(evaluation code, classical baseline) are done; Faster R-CNN (2a.2) has its code and smoke test, and its
+full training run has not been done. The only accuracy numbers so far are the classical baseline's
+(below). TODO: deep-model results arrive with Phases 2b-4.
 
 ## Setup (WSL2 Ubuntu, NVIDIA GPU)
 
@@ -56,3 +58,24 @@ uv run python scripts/prepare_data.py       # COCO files + fixed splits, determi
 resize, grayscale to 3 channels. Box coordinates are tracked through one affine, which also maps
 predictions back to the original image. `uv run python scripts/preview_preprocess.py` writes
 `reports/figures/preprocess_grid.png`. Whether CLAHE helps detection is not yet measured (TODO).
+
+## Detection evaluation and the classical baseline
+
+All detectors are scored by `defectlens.eval.detection`: COCO-style AP (101-point, greedy matching,
+checked against `pycocotools` in the tests), recall and precision at a score threshold, a confusion matrix
+with a background row, all in the original 200x200 frame. Thresholds are tuned on val only; test is scored
+once with frozen parameters.
+
+The classical baseline (`uv run python scripts/run_classical.py`, MLflow run `eae981c9...`) subtracts a
+Gaussian background, thresholds a robust z-score of the local residual energy and boxes the connected
+components. It has no class output, so it is scored class-agnostically:
+
+| split | AP@50 | AP@50:95 | recall | precision | FP / image |
+|---|---|---|---|---|---|
+| val (tuned on) | 0.0941 | 0.0408 | 0.2073 | 0.1004 | 4.55 |
+| test | 0.1072 | 0.0490 | 0.1990 | 0.0909 | 4.63 |
+
+Its best `bg_sigma` (64) is at the edge of the search grid and was not extended after test was scored.
+
+Faster R-CNN: `uv run python scripts/train_detector.py model=faster_rcnn trainer.fast_dev_run=true` is the
+smoke test. The full run is TODO (no Faster R-CNN results yet).

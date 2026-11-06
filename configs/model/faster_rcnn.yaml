@@ -1,0 +1,19 @@
+# Faster R-CNN ResNet50-FPN v2 (torchvision), COCO-pretrained, fine-tuned on NEU-DET.
+# Expected: AMP, batch 4, 480 px -> 3-4 GB VRAM, ~6 GB RAM; runtime is measured in the smoke run.
+name: faster_rcnn
+pretrained: true            # torchvision COCO_V1 weights (downloaded on first use)
+trainable_backbone_layers: 3
+input_size: 480             # letterbox size (overrides preprocess.size); NEU-DET images are 200x200
+batch_size: 4
+epochs: 30
+lr: 0.005                   # torchvision's 0.02 for batch 16, scaled linearly to batch 4
+momentum: 0.9
+weight_decay: 0.0001
+warmup_iters: 300
+grad_clip: 10.0
+score_thresh: 0.001         # keep low-score boxes so AP sees the full precision-recall curve
+detections_per_img: 100
+augment: {hflip: 0.5, vflip: 0.5, brightness_contrast: 0.5}
+recall_score_thr: 0.5       # operating point for recall / precision / confusion matrix
+select_metric: map50_95     # best-val checkpoint criterion
+checkpoint_dir: models/faster_rcnn

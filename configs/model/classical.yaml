@@ -1,0 +1,10 @@
+# Classical, class-agnostic baseline: background subtraction -> local energy -> robust z-score
+# -> threshold -> morphology -> connected components. Parameters are tuned on val only.
+name: classical
+splits: [val, test]       # val is used for tuning; test is scored once with the frozen parameters
+grid:                     # exhaustive search, objective = class-agnostic AP@50 on val
+  bg_sigma: [16.0, 32.0, 64.0]      # Gaussian background estimate (pixels)
+  smooth_sigma: [2.0, 4.0]         # smoothing of the residual energy (pixels)
+  z_thresh: [0.5, 1.0, 1.5, 2.0, 3.0]
+  close_kernel: [5, 11]            # morphological closing, elliptical, pixels
+  min_area: [50, 200]              # discard components smaller than this (pixels^2)

@@ -1,12 +1,21 @@
-# Root Hydra config. Later phases add groups (model/, data/, preprocess/, ...).
+# Root Hydra config. Compose with defectlens.config.load_config; pick a model with `model=<name>`.
+defaults:
+  - data: neu_det
+  - preprocess: default
+  - model: null
+  - _self_
+
 seed: 42
 experiment: defectlens
 mlflow:
   tracking_uri: sqlite:///mlruns/mlflow.db
   artifact_root: mlruns/artifacts
-data:
-  dvc_file: null  # e.g. data/raw/neu_det.dvc once the dataset is versioned
-
-hydra:
-  run:
-    dir: outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+dvc_file: data/raw/neu_det.dvc   # dataset version logged with every run
+trainer:
+  fast_dev_run: false   # smoke test: 2 train batches, 2 val batches, no MLflow, no checkpoint
+  limit_train_batches: null   # cap batches per epoch (timing runs)
+  limit_val_batches: null
+  run_test: true        # score the best-val checkpoint once on test after training
+  amp: true
+  num_workers: 4
+  device: cuda
