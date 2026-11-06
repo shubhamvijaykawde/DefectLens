@@ -220,7 +220,7 @@ def run_training(cfg: DictConfig) -> dict[str, dict[str, float]]:
         OmegaConf.to_container(cfg, resolve=True),  # type: ignore[arg-type]
         seed=int(cfg.seed),
         dvc_file=Path(cfg.dvc_file),
-        run_name=str(mcfg.name),
+        run_name=str(mcfg.get("run_name", mcfg.name)),
         tracking_uri=str(cfg.mlflow.tracking_uri),
         artifact_root=str(cfg.mlflow.artifact_root),
     ):

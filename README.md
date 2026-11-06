@@ -7,9 +7,9 @@ detector for unseen defects (VisA), exported to ONNX and served as an API. Work 
 ## Status
 
 Phases 0a-0c (environment, project skeleton, risk spikes), 1a-1b (data, splits, preprocessing),
-2a.1 (evaluation code, classical baseline) and 2a.2 (Faster R-CNN) are done. D-FINE-S (2b.1) has its code,
-tests and smoke run; its full training run has not been done. Measured so far: the classical baseline and
-Faster R-CNN (below). TODO: D-FINE and anomaly results arrive with Phases 2b-4.
+2a.1 (evaluation code, classical baseline), 2a.2 (Faster R-CNN), 2b.1 (D-FINE-S) and 2b.2 (comparison) are
+done. Measured so far: the classical baseline, Faster R-CNN and D-FINE-S (below). TODO: anomaly results
+arrive with Phases 3-4; a matched Faster R-CNN rerun is recommended but not run.
 
 ## Setup (WSL2 Ubuntu, NVIDIA GPU)
 
@@ -110,6 +110,35 @@ scale/shift augmentation (see [PLAN.md](PLAN.md), Phase 2b.1).
 
 ## D-FINE-S
 
-Code and smoke test only: `uv run python scripts/train_detector.py model=dfine_s trainer.fast_dev_run=true`.
-Short dev runs measured 3.4 GiB peak VRAM and about 55 s/epoch at batch 8 x 2, 640 px. The full run and its
-accuracy are TODO (no D-FINE results yet).
+`uv run python scripts/train_detector.py model=dfine_s` (AMP, batch 8 x 2, 640 px, 40 epochs, 37 min, 3.4 GiB
+peak VRAM; MLflow run `2f90dfc4...`). The best-val checkpoint (epoch 40) is scored once on test. Early stopping
+(patience 10) was configured but never fired: val AP@50:95 was still creeping up at epoch 40.
+
+| metric | val | test |
+|---|---|---|
+| AP@50 | 0.7105 | 0.7304 |
+| AP@50:95 | 0.4346 | 0.4442 |
+| recall | 0.6641 | 0.6927 |
+| precision | 0.7491 | 0.7411 |
+| FP / image | 0.5444 | 0.5630 |
+| recall_max (any score) | 0.9849 | 0.9936 |
+
+## Detector comparison
+
+Full tables, protocol, per-class results and confusion matrices: [reports/detection_comparison.md](reports/detection_comparison.md),
+generated from MLflow by `uv run python scripts/compare_detectors.py`.
+
+| detector (test) | AP@50 | AP@50:95 | recall@0.5 | precision@0.5 | FP/img@0.5 | recall_max |
+|---|---|---|---|---|---|---|
+| classical (class-agnostic) | 0.1072 | 0.0490 | 0.1990 | 0.0909 | 4.6296 | 0.1990 |
+| Faster R-CNN | 0.7613 | 0.4224 | 0.7771 | 0.6778 | 0.8593 | 0.9315 |
+| D-FINE-S | 0.7304 | 0.4442 | 0.6927 | 0.7411 | 0.5630 | 0.9936 |
+
+**This is not a like-for-like comparison.** D-FINE used scale/shift augmentation, 640 px input, AdamW, batch
+16 and a 40-epoch budget; Faster R-CNN used flips and brightness/contrast only, 480 px, SGD, batch 4 and 30
+epochs. (D-FINE's early stopping never triggered, so it did not change the outcome.) One seed each, 270 test
+images. D-FINE leads on AP@50:95, Faster R-CNN on AP@50; at a fixed score of 0.5 D-FINE is more precise and
+less sensitive, and the two score types are not equally calibrated for that threshold. Both models miss most
+of the crazing class and almost never confuse one class for another: the errors are missed defects and false
+alarms (see the confusion matrices in the report). A matched Faster R-CNN rerun with the same augmentation is
+recommended before drawing conclusions about the architectures (TODO, not run).

@@ -13,8 +13,9 @@ Plan approved 2026-11-01 (revision 2).
 | 1b Preprocessing | **Done** | ROI crop → CLAHE → letterbox → 3 channels, one `Preprocessor` with a single composed affine (also maps predictions back). CLAHE is off by default (effect unmeasured). `reports/figures/preprocess_grid.png` shows boxes aligned in all columns for one image per class. Gates: 40 tests in 3.7 s, ruff and mypy clean |
 | 2a.1 Eval code + classical baseline | **Done** | `eval/{detection,confusion,report}.py`: COCO-style AP, agrees with `pycocotools` to 1e-9 on random data (test); a hand-computed fixture matches exactly (AP = 253/303) and a perfect prediction scores 1.0. Classical baseline (class-agnostic), tuned on val over 120 configs (best: bg_sigma 64, smooth_sigma 2, z_thresh 1.5, close_kernel 5, min_area 200), MLflow run `eae981c9b1ec4ab8b9219da640f7c77d`, 32 s on CPU. **Val: AP@50 0.0941, AP@50:95 0.0408, recall 0.2073. Test (scored once): AP@50 0.1072, AP@50:95 0.0490, recall 0.1990, precision 0.0909, 4.63 false positives/image.** The best `bg_sigma` sits on the grid edge (64); the grid was not extended after seeing test, to avoid tuning on it. The baseline is weak, as expected |
 | 2a.2 Faster R-CNN | **Done** (you ran it; MLflow run `377b83c4a275444cb422dcf88986040c`) | ResNet50-FPN v2, COCO-pretrained, AMP, batch 4, 480 px, 30 epochs, 315 it/epoch. **Val (best-val checkpoint, epoch 28 chosen on val AP@50:95): AP@50 0.7228, AP@50:95 0.3780, recall 0.7398. Test (scored once): AP@50 0.7613, AP@50:95 0.4224, recall 0.7771, precision 0.6778, 0.8593 FP/image, recall_max 0.9315** (recall/precision at score 0.5). Per class on test (AP@50 / recall): crazing 0.4113 / 0.5253, inclusion 0.8108 / 0.8212, patches 0.9128 / 0.8603, pitted_surface 0.8540 / 0.8281, rolled-in_scale 0.6173 / 0.6765, scratches 0.9615 / 0.9605. Peak VRAM 1,752 MiB allocated / 2,262 MiB reserved; about 82 s/epoch, 2,452 s (41 min) total, below the 45-55 min extrapolation. **Overfitting pattern:** train loss fell every epoch (0.650 to 0.078) while val AP@50 peaked at 0.7379 in epoch 10 and then stayed between 0.70 and 0.73, and val recall fell from 0.8215 (epoch 8) to about 0.74 (0.7398 at the end). Val AP@50:95 kept creeping up to about 0.378, which is why the AP@50:95 criterion picked epoch 28. The test numbers sit above val (0.7613 vs 0.7228 AP@50); with 270 images per split that gap is within what split noise could produce, but it is not measured here (no repeat seeds yet) |
-| 2b.1 D-FINE-S | **Code, tests and smoke/timing runs done; full training not started (🔴, you run it)** | `dfine.py`, `configs/model/dfine_s.yaml`, 8 tests; shared trainer now handles both models, gradient accumulation and early stopping. 73 tests pass in 38 s, ruff and mypy clean. Smoke (`fast_dev_run`, real checkpoint, GPU): 15 s, valid eval dict. Dev runs (experiment `dev`, no test pass): 60 batches in 24 s (about 0.4 s/batch); 2 full epochs in 116 s (about 55 s/epoch incl. validation), **peak 3,393 MiB allocated / 3,618 MiB reserved**, loss 55.5 then 30.5, val AP@50 0.0094 then 0.1570 (a 2-epoch schedule, only to show it learns; not a result). Extrapolation, not measured over a full run: 40 epochs max is about 37 min; early stopping may end it sooner. No D-FINE accuracy exists yet |
-| 2b.2 onward | Not started | TODO |
+| 2b.1 D-FINE-S | **Done** (you ran it; MLflow run `2f90dfc4cce244a187414c018f62208a`) | D-FINE-S from `dfine-small-coco`, AMP, batch 8 x 2, 640 px, 40 epochs, 158 it/epoch. **Val (best-val checkpoint = epoch 40): AP@50 0.7105, AP@50:95 0.4346, recall 0.6641. Test (scored once): AP@50 0.7304, AP@50:95 0.4442, recall 0.6927, precision 0.7411, 0.5630 FP/image, recall_max 0.9936** (recall/precision at score 0.5). Per class on test (AP@50 / recall): crazing 0.3493 / 0.2020, inclusion 0.8474 / 0.8079, patches 0.9065 / 0.8603, pitted_surface 0.8236 / 0.7188, rolled-in_scale 0.4895 / 0.5490, scratches 0.9658 / 0.9737. Peak VRAM 3,394 MiB allocated / 3,620 MiB reserved; about 55 s/epoch, 2,210 s (37 min) total, matching the estimate. **Early stopping never fired:** val AP@50:95 rose slowly to 0.4346 at the last epoch (best epoch = epoch 40), so the 40-epoch budget ended the run, not patience, and more epochs might still help (not tried). The Faster R-CNN pattern (val recall falling after epoch 8) did not appear: D-FINE val recall stayed between 0.64 and 0.66 over the last 20 epochs, but this run cannot say whether the augmentation is the reason |
+| 2b.2 Comparison | **Done** | `scripts/compare_detectors.py` builds `reports/detection_comparison.md` and `reports/figures/confusion_{faster_rcnn,dfine_s}.png` from MLflow (val read at each run's best epoch). Numbers equal the ones you pasted. **Not like-for-like** (augmentation, input size, optimizer, batch, epoch budget differ; one seed each); see the report. Gates: 78 tests in 42 s, ruff and mypy clean. A matched Faster R-CNN rerun is recommended, not run (🔴, below) |
+| 3a onward | Not started | TODO |
 
 ## Context
 
@@ -417,17 +418,40 @@ sooner). The OOM fallbacks (batch 4 x 4, input 512, D-FINE-N) are not needed at 
 
 ### Phase 2b.2 — Comparison and confusion matrix (🟢)
 **Goal:** the results table.
-**Packages:** none.
-**Files:** `scripts/compare_detectors.py`, `reports/detection_comparison.md`, `reports/figures/confusion_*.png`.
+**Packages:** `matplotlib` (was only a transitive dependency; now declared).
+**Files:** `src/defectlens/eval/compare.py`, `scripts/compare_detectors.py`, `tests/test_compare.py`,
+`reports/detection_comparison.md`, `reports/figures/confusion_*.png`; `trainer.py` gained an optional
+`model.run_name` so a rerun does not collide with the original run's name.
 **Commands:**
 ```bash
-uv run python scripts/compare_detectors.py
+uv run python scripts/compare_detectors.py [runs=classical,faster_rcnn,faster_rcnn_aug,dfine_s]
 ```
-**Expected:** a table generated from MLflow, with no hand-typed numbers.
-**Done when:** the table covers all detectors, the confusion matrix includes a background row, and per-class
-recall is shown. Optional 🔴: 3 seeds on the best model, since 270 test images give noisy differences
-(adds 2× the run time).
-**Resources:** about 2 GB VRAM, under 3 min.
+**Done:** the table covers the classical baseline, Faster R-CNN and D-FINE-S, is generated from MLflow, has a
+background row in the confusion matrices and per-class AP and recall, and states that the comparison is not
+like-for-like. Confusion matrices are row-normalised heat maps with counts, at IoU 0.5 and score 0.5.
+**Findings (from the generated report, single seed, 270 test images):**
+- AP@50:95: D-FINE ahead (test 0.4442 vs 0.4224, val 0.4346 vs 0.3780). AP@50: Faster R-CNN ahead (test
+  0.7613 vs 0.7304, val 0.7228 vs 0.7105). So there is no single winner, and the gaps are small relative to
+  what split noise could produce (unmeasured).
+- At score 0.5, D-FINE has higher precision (0.7411 vs 0.6778) and fewer false alarms (151 vs 230 on test)
+  but lower recall (0.6927 vs 0.7771); its `recall_max` is higher (0.9936 vs 0.9315). A fixed 0.5 is not a
+  neutral operating point across the two score types; cost-based thresholds come later.
+- Crazing is the weakest class for both, and D-FINE misses most of it at 0.5 (recall 0.2020; 79 of 99
+  boxes missed in the matrix). Rolled-in scale is also worse for D-FINE (AP@50 0.4895 vs 0.6173).
+- Errors are almost all misses and false alarms, not class swaps: wrong-class matches are 3 (Faster R-CNN)
+  and 1 (D-FINE).
+**Matched Faster R-CNN rerun (recommended, 🔴, not run):** the one recipe difference that can be matched
+exactly is the augmentation, since the other differences (SGD vs AdamW, 480 vs 640 px, batch) belong to each
+architecture's own recipe. Early stopping did not fire for D-FINE, so it is not a difference that matters.
+It costs about 41 min and 1.75 GiB VRAM, and tells us whether D-FINE's AP@50:95 lead survives when
+Faster R-CNN also gets scale/shift augmentation. Worth doing before any claim about the architectures.
+```bash
+uv run python scripts/train_detector.py model=faster_rcnn +model.augment.scale_translate=0.5 +model.run_name=faster_rcnn_aug model.checkpoint_dir=models/faster_rcnn_aug 2>&1 | tee ~/faster_rcnn_aug_run.log
+uv run python scripts/compare_detectors.py runs=classical,faster_rcnn,faster_rcnn_aug,dfine_s
+```
+(a separate checkpoint directory keeps the original `models/faster_rcnn/best.pt`). Optional, 2x run time:
+3 seeds of the best model.
+**Resources:** CPU only, under 1 min.
 
 ### Phase 3a — PatchCore and AnomalyDINO (🔴 training; 🟢 smoke)
 **Goal:** the first two anomaly models, with metrics.
