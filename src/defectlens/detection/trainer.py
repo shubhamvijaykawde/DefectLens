@@ -1,4 +1,4 @@
-"""Train and evaluate a detector from a composed Hydra config (Faster R-CNN for now).
+"""Train and evaluate a detector (Faster R-CNN or D-FINE) from a composed Hydra config.
 
 Flow: fixed seed -> train/val loaders -> epochs (train, score val, keep best-val checkpoint) ->
 best checkpoint scored once on test. ``trainer.fast_dev_run`` shrinks everything to a few
@@ -8,7 +8,10 @@ batches and skips MLflow and checkpoints: it is only a check that the whole path
 from __future__ import annotations
 
 import json
+import math
 import time
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -16,14 +19,9 @@ import mlflow
 import torch
 from omegaconf import DictConfig, OmegaConf
 
+from defectlens.detection import dfine, faster_rcnn
+from defectlens.detection.common import make_scheduler
 from defectlens.detection.datamodule import NeuDetDataset, build_augment, make_loader
-from defectlens.detection.faster_rcnn import (
-    build_model,
-    make_optimizer,
-    make_scheduler,
-    predict,
-)
-from defectlens.detection.faster_rcnn import train_one_epoch as frcnn_epoch
 from defectlens.eval.confusion import confusion_matrix
 from defectlens.eval.detection import evaluate_detections
 from defectlens.eval.report import confusion_table, log_metrics, metrics_table, per_class_table
@@ -32,6 +30,33 @@ from defectlens.seed import seed_everything
 from defectlens.tracking import tracked_run
 
 HEADLINE_KEYS = ("map50", "map50_95", "recall", "precision", "fp_per_image", "recall_max")
+
+
+@dataclass(frozen=True)
+class Backend:
+    """The model-specific calls the shared training loop needs."""
+
+    build: Callable[[Any, int], Any]
+    make_optimizer: Callable[[Any, Any], Any]
+    train_epoch: Callable[..., float]
+    predict: Callable[..., list[Any]]
+
+
+def _frcnn_epoch(*args: Any, accum_steps: int = 1, **kwargs: Any) -> float:
+    if accum_steps != 1:
+        msg = "faster_rcnn does not support gradient accumulation"
+        raise ValueError(msg)
+    return faster_rcnn.train_one_epoch(*args, **kwargs)
+
+
+BACKENDS = {
+    "faster_rcnn": Backend(
+        faster_rcnn.build_model, faster_rcnn.make_optimizer, _frcnn_epoch, faster_rcnn.predict
+    ),
+    "dfine_s": Backend(
+        dfine.build_model, dfine.make_optimizer, dfine.train_one_epoch, dfine.predict
+    ),
+}
 
 
 def _device(cfg: DictConfig) -> torch.device:
@@ -59,7 +84,14 @@ def evaluate_split(
         ds, int(cfg.model.batch_size), shuffle=False, num_workers=int(cfg.trainer.num_workers),
         seed=int(cfg.seed),
     )
-    dets = predict(model, loader, device, amp=bool(cfg.trainer.amp), max_batches=max_batches)
+    extra = (
+        {"score_thresh": float(cfg.model.score_thresh),
+         "detections_per_img": int(cfg.model.detections_per_img)}
+        if cfg.model.name == "dfine_s" else {}
+    )
+    dets = BACKENDS[str(cfg.model.name)].predict(
+        model, loader, device, amp=bool(cfg.trainer.amp), max_batches=max_batches, **extra
+    )
     gts = ds.ground_truth(len(dets))
     metrics = evaluate_detections(
         dets, gts, ds.class_names, recall_score_thr=float(cfg.model.recall_score_thr)
@@ -69,7 +101,7 @@ def evaluate_split(
 
 def run_training(cfg: DictConfig) -> dict[str, dict[str, float]]:
     """Returns ``{"val": ..., "test": ...}`` metric dicts (``test`` only if it was scored)."""
-    if cfg.model is None or cfg.model.name != "faster_rcnn":
+    if cfg.model is None or cfg.model.name not in BACKENDS:
         msg = f"unsupported model {None if cfg.model is None else cfg.model.name!r}"
         raise ValueError(msg)
     seed_everything(int(cfg.seed))
@@ -77,6 +109,9 @@ def run_training(cfg: DictConfig) -> dict[str, dict[str, float]]:
     amp = bool(cfg.trainer.amp) and device.type == "cuda"
     smoke = bool(cfg.trainer.fast_dev_run)
     mcfg = cfg.model
+    backend = BACKENDS[str(mcfg.name)]
+    accum = int(mcfg.get("accum_steps", 1))
+    patience = mcfg.get("patience")
 
     pre_cfg: dict[str, Any] = {**cfg.preprocess, "size": int(mcfg.input_size)}
     pre = Preprocessor(PreprocessConfig.from_dict(pre_cfg))
@@ -95,12 +130,13 @@ def run_training(cfg: DictConfig) -> dict[str, dict[str, float]]:
     epochs = 1 if smoke else int(mcfg.epochs)
     iters_per_epoch = min(len(train_loader), int(limit_train)) if limit_train else len(train_loader)
 
-    model = build_model(mcfg, len(train_ds.class_names)).to(device)
-    opt = make_optimizer(model, mcfg)
-    sched = make_scheduler(opt, epochs * iters_per_epoch, int(mcfg.warmup_iters))
+    model = backend.build(mcfg, len(train_ds.class_names)).to(device)
+    opt = backend.make_optimizer(model, mcfg)
+    steps_per_epoch = math.ceil(iters_per_epoch / accum)  # optimizer steps, not batches
+    sched = make_scheduler(opt, epochs * steps_per_epoch, int(mcfg.warmup_iters))
     scaler = torch.amp.GradScaler(device.type, enabled=amp)
     print(f"device={device.type} amp={amp} train={len(train_ds)} val={len(val_ds)} "
-          f"iters/epoch={iters_per_epoch} epochs={epochs}")
+          f"iters/epoch={iters_per_epoch} accum={accum} epochs={epochs} patience={patience}")
 
     def loop(log: bool) -> dict[str, dict[str, float]]:
         best, best_epoch, results = -1.0, -1, {}
@@ -112,9 +148,9 @@ def run_training(cfg: DictConfig) -> dict[str, dict[str, float]]:
         t_start = time.time()
         for epoch in range(epochs):
             t0 = time.time()
-            loss = frcnn_epoch(
+            loss = backend.train_epoch(
                 model, train_loader, opt, sched, scaler, device, amp=amp,
-                grad_clip=float(mcfg.grad_clip), max_batches=limit_train,
+                grad_clip=float(mcfg.grad_clip), max_batches=limit_train, accum_steps=accum,
             )
             t_train = time.time() - t0
             val, _, _ = evaluate_split(model, val_ds, cfg, device, max_batches=limit_val)
@@ -123,19 +159,24 @@ def run_training(cfg: DictConfig) -> dict[str, dict[str, float]]:
             print(f"epoch {epoch + 1}/{epochs} loss={loss:.4f} val map50={val['map50']:.4f} "
                   f"map50_95={val['map50_95']:.4f} recall={val['recall']:.4f} "
                   f"train {t_train:.0f}s total {time.time() - t0:.0f}s")
-            if not log:
-                continue
-            mlflow.log_metric("train/loss", loss, step=epoch)
-            mlflow.log_metric("lr", float(sched.get_last_lr()[0]), step=epoch)
-            mlflow.log_metric("epoch_seconds", time.time() - t0, step=epoch)
-            log_metrics("val", val, step=epoch)
-            if sel > best:
+            improved = sel > best
+            if improved:
                 best, best_epoch = sel, epoch
-                torch.save(
-                    {"model": model.state_dict(), "epoch": epoch, "val": val,
-                     "config": OmegaConf.to_container(cfg, resolve=True)},
-                    ckpt_dir / "best.pt",
-                )
+            if log:
+                mlflow.log_metric("train/loss", loss, step=epoch)
+                mlflow.log_metric("lr", float(sched.get_last_lr()[0]), step=epoch)
+                mlflow.log_metric("epoch_seconds", time.time() - t0, step=epoch)
+                log_metrics("val", val, step=epoch)
+                if improved:
+                    torch.save(
+                        {"model": model.state_dict(), "epoch": epoch, "val": val,
+                         "config": OmegaConf.to_container(cfg, resolve=True)},
+                        ckpt_dir / "best.pt",
+                    )
+            if patience is not None and epoch - best_epoch >= int(patience):
+                print(f"early stopping after epoch {epoch + 1}: best val {mcfg.select_metric}="
+                      f"{best:.4f} at epoch {best_epoch + 1}")
+                break
         if device.type == "cuda":
             peak = torch.cuda.max_memory_allocated() / 2**20
             reserved = torch.cuda.max_memory_reserved() / 2**20
@@ -146,7 +187,8 @@ def run_training(cfg: DictConfig) -> dict[str, dict[str, float]]:
                 )
         print(f"training wall time: {time.time() - t_start:.0f}s")
         if log:
-            mlflow.log_metrics({"train_seconds": time.time() - t_start, "best_epoch": best_epoch})
+            mlflow.log_metrics({"train_seconds": time.time() - t_start, "best_epoch": best_epoch,
+                                "epochs_run": epoch + 1})
             if cfg.trainer.run_test:
                 ckpt = torch.load(ckpt_dir / "best.pt", map_location=device, weights_only=False)
                 model.load_state_dict(ckpt["model"])
@@ -184,6 +226,7 @@ def run_training(cfg: DictConfig) -> dict[str, dict[str, float]]:
     ):
         mlflow.set_tags({"model": str(mcfg.name), "split_hash": _split_hash(cfg)})
         mlflow.log_params({"epochs": epochs, "batch_size": int(mcfg.batch_size),
+                           "accum_steps": accum, "patience": str(patience),
                            "lr": float(mcfg.lr), "input_size": int(mcfg.input_size),
                            "amp": amp, "pretrained": bool(mcfg.pretrained)})
         return loop(log=True)

@@ -1,0 +1,23 @@
+# D-FINE-S (Hugging Face, COCO-pretrained) fine-tuned on NEU-DET.
+# AMP, batch 8 x accumulate 2, 640 px: 3.4 GiB peak VRAM allocated, ~55 s/epoch (dev runs, see PLAN.md).
+# Regularisation follows the Faster R-CNN run, where val mAP@50 plateaued near epoch 10 and val recall
+# fell afterwards (see PLAN.md 2a.2): early stopping on val + scale/shift augmentation + 40 epochs max.
+name: dfine_s
+hf_id: ustc-community/dfine-small-coco
+pretrained: true
+input_size: 640             # letterbox size, same as the ONNX export spike; NEU-DET images are 200x200
+batch_size: 8
+accum_steps: 2              # effective batch 16
+epochs: 40
+patience: 10                # stop when val select_metric has not improved for this many epochs
+lr: 0.0001                  # head / transformer LR (official S recipe is 2e-4 at batch 32), untuned
+backbone_lr_mult: 0.5
+weight_decay: 0.0001
+warmup_iters: 100           # optimizer steps (about 1.3 epochs at 79 steps/epoch)
+grad_clip: 0.1              # official D-FINE value
+score_thresh: 0.001
+detections_per_img: 100
+augment: {hflip: 0.5, vflip: 0.5, brightness_contrast: 0.5, scale_translate: 0.5}
+recall_score_thr: 0.5
+select_metric: map50_95
+checkpoint_dir: models/dfine_s

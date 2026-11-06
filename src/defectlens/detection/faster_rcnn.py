@@ -6,8 +6,7 @@ back to the original image frame so metrics are comparable across detectors.
 
 from __future__ import annotations
 
-import math
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable
 from typing import Any
 
 import numpy as np
@@ -21,9 +20,12 @@ from torchvision.models.detection import (
 )
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 
+from defectlens.detection.common import make_scheduler, to_device
 from defectlens.detection.datamodule import Meta, Target
 from defectlens.eval.detection import Detections
 from defectlens.preprocess.geometry import clip_boxes
+
+__all__ = ["build_model", "make_optimizer", "make_scheduler", "predict", "train_one_epoch"]
 
 
 def build_model(cfg: Any, num_classes: int) -> FasterRCNN:
@@ -50,27 +52,6 @@ def make_optimizer(model: FasterRCNN, cfg: Any) -> SGD:
     )
 
 
-def make_scheduler(opt: SGD, total_iters: int, warmup_iters: int) -> LambdaLR:
-    """Linear warm-up, then cosine decay to zero, stepped once per iteration."""
-
-    def factor(it: int) -> float:
-        if it < warmup_iters:
-            return (it + 1) / warmup_iters
-        progress = (it - warmup_iters) / max(1, total_iters - warmup_iters)
-        return 0.5 * (1.0 + math.cos(math.pi * min(progress, 1.0)))
-
-    return LambdaLR(opt, factor)
-
-
-def _to_device(
-    images: Sequence[torch.Tensor], targets: Sequence[Target], device: torch.device
-) -> tuple[list[torch.Tensor], list[Target]]:
-    return (
-        [i.to(device, non_blocking=True) for i in images],
-        [{k: v.to(device, non_blocking=True) for k, v in t.items()} for t in targets],
-    )
-
-
 def train_one_epoch(
     model: FasterRCNN,
     loader: Iterable[tuple[list[torch.Tensor], list[Target], list[Meta]]],
@@ -89,7 +70,7 @@ def train_one_epoch(
     for step, (images, targets, _) in enumerate(loader):
         if max_batches is not None and step >= max_batches:
             break
-        images, targets = _to_device(images, targets, device)
+        images, targets = to_device(images, targets, device)
         with torch.autocast(device.type, dtype=torch.float16, enabled=amp):
             loss = sum(model(images, targets).values())
         if not torch.isfinite(loss):

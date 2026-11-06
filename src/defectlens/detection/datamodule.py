@@ -27,13 +27,19 @@ Item = tuple[torch.Tensor, Target, Meta]
 
 
 def build_augment(cfg: Any, seed: int) -> A.Compose:
-    """Flips and brightness/contrast jitter (steel texture has no preferred orientation)."""
+    """Flips, brightness/contrast jitter, optional scale/shift (no preferred steel orientation)."""
+    ops: list[A.BasicTransform] = [
+        A.HorizontalFlip(p=float(cfg.hflip)),
+        A.VerticalFlip(p=float(cfg.vflip)),
+        A.RandomBrightnessContrast(0.2, 0.2, p=float(cfg.brightness_contrast)),
+    ]
+    p_affine = float(getattr(cfg, "scale_translate", 0.0))  # optional: absent for Faster R-CNN
+    if p_affine > 0:
+        # Scale 0.75-1.25 and shift up to 10%; borders filled with mid-gray, boxes follow.
+        ops.append(A.Affine(scale=(0.75, 1.25), translate_percent=(-0.1, 0.1), rotate=0,
+                            border_mode=cv2.BORDER_CONSTANT, fill=114, p=p_affine))
     return A.Compose(
-        [
-            A.HorizontalFlip(p=float(cfg.hflip)),
-            A.VerticalFlip(p=float(cfg.vflip)),
-            A.RandomBrightnessContrast(0.2, 0.2, p=float(cfg.brightness_contrast)),
-        ],
+        ops,
         bbox_params=A.BboxParams(format="pascal_voc", label_fields=["labels"], min_visibility=0.5),
         seed=seed,
     )

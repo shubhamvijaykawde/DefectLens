@@ -12,8 +12,9 @@ Plan approved 2026-11-01 (revision 2).
 | 1a Data | **Done** | NEU-DET downloaded by `gdown` from the official Drive link (27,607,059 bytes, sha256 `cf04bb0b…ec835d5`, computed by us). 1,800 images, 4,189 raw boxes; 3 exact duplicate boxes dropped (`crazing_120`, `inclusion_62`, `patches_198`) → 4,186. XML `<filename>` lacks the extension for patches/pitted_surface, so images are found by stem. 123 images have mixed-class boxes, so splits stratify on the file-name class. Split 70/15/15 = 1,260 / 270 / 270, 210/45/45 per class, seed 42, split_hash `e3037af5…956be39`. VisA (cashew, candle, pcb1, macaroni2): train 450/900/904/900 normal; `threshold_calibration` / `threshold_evaluation` = 50A+25N each (cashew) and 50A+50N each (others). Re-running `prepare_data.py` gives byte-identical files. DVC: `data/raw/neu_det` md5 `87d1324f…`, `data/processed` `e21533db…`, `data/splits` tracked (run `dvc add` yourself again if you rerun). `docs/DATA_TERMS.md` written; VisA registry says CC BY 4.0 (conflict with earlier sources not fully resolved), NEU-DET states no license. Gates: 29 tests pass at this point |
 | 1b Preprocessing | **Done** | ROI crop → CLAHE → letterbox → 3 channels, one `Preprocessor` with a single composed affine (also maps predictions back). CLAHE is off by default (effect unmeasured). `reports/figures/preprocess_grid.png` shows boxes aligned in all columns for one image per class. Gates: 40 tests in 3.7 s, ruff and mypy clean |
 | 2a.1 Eval code + classical baseline | **Done** | `eval/{detection,confusion,report}.py`: COCO-style AP, agrees with `pycocotools` to 1e-9 on random data (test); a hand-computed fixture matches exactly (AP = 253/303) and a perfect prediction scores 1.0. Classical baseline (class-agnostic), tuned on val over 120 configs (best: bg_sigma 64, smooth_sigma 2, z_thresh 1.5, close_kernel 5, min_area 200), MLflow run `eae981c9b1ec4ab8b9219da640f7c77d`, 32 s on CPU. **Val: AP@50 0.0941, AP@50:95 0.0408, recall 0.2073. Test (scored once): AP@50 0.1072, AP@50:95 0.0490, recall 0.1990, precision 0.0909, 4.63 false positives/image.** The best `bg_sigma` sits on the grid edge (64); the grid was not extended after seeing test, to avoid tuning on it. The baseline is weak, as expected |
-| 2a.2 Faster R-CNN | **Smoke done; full training not started (🔴, you run it)** | Code, config and 7 tests in place. `trainer.fast_dev_run=true`: 13 s, valid eval dict, 1,582 MiB peak allocated. Timing run (60 train batches, AMP, batch 4, 480 px, dev experiment, no test pass): 17 s for 60 iterations (about 0.28 s/it, includes warm-up), peak 1,752 MiB allocated / 2,628 MiB reserved. Extrapolation, not a measured full run: 315 it/epoch, about 90 s/epoch plus validation, so roughly 45-55 min for 30 epochs. No Faster R-CNN accuracy exists yet |
-| 2b onward | Not started | TODO |
+| 2a.2 Faster R-CNN | **Done** (you ran it; MLflow run `377b83c4a275444cb422dcf88986040c`) | ResNet50-FPN v2, COCO-pretrained, AMP, batch 4, 480 px, 30 epochs, 315 it/epoch. **Val (best-val checkpoint, epoch 28 chosen on val AP@50:95): AP@50 0.7228, AP@50:95 0.3780, recall 0.7398. Test (scored once): AP@50 0.7613, AP@50:95 0.4224, recall 0.7771, precision 0.6778, 0.8593 FP/image, recall_max 0.9315** (recall/precision at score 0.5). Per class on test (AP@50 / recall): crazing 0.4113 / 0.5253, inclusion 0.8108 / 0.8212, patches 0.9128 / 0.8603, pitted_surface 0.8540 / 0.8281, rolled-in_scale 0.6173 / 0.6765, scratches 0.9615 / 0.9605. Peak VRAM 1,752 MiB allocated / 2,262 MiB reserved; about 82 s/epoch, 2,452 s (41 min) total, below the 45-55 min extrapolation. **Overfitting pattern:** train loss fell every epoch (0.650 to 0.078) while val AP@50 peaked at 0.7379 in epoch 10 and then stayed between 0.70 and 0.73, and val recall fell from 0.8215 (epoch 8) to about 0.74 (0.7398 at the end). Val AP@50:95 kept creeping up to about 0.378, which is why the AP@50:95 criterion picked epoch 28. The test numbers sit above val (0.7613 vs 0.7228 AP@50); with 270 images per split that gap is within what split noise could produce, but it is not measured here (no repeat seeds yet) |
+| 2b.1 D-FINE-S | **Code, tests and smoke/timing runs done; full training not started (🔴, you run it)** | `dfine.py`, `configs/model/dfine_s.yaml`, 8 tests; shared trainer now handles both models, gradient accumulation and early stopping. 73 tests pass in 38 s, ruff and mypy clean. Smoke (`fast_dev_run`, real checkpoint, GPU): 15 s, valid eval dict. Dev runs (experiment `dev`, no test pass): 60 batches in 24 s (about 0.4 s/batch); 2 full epochs in 116 s (about 55 s/epoch incl. validation), **peak 3,393 MiB allocated / 3,618 MiB reserved**, loss 55.5 then 30.5, val AP@50 0.0094 then 0.1570 (a 2-epoch schedule, only to show it learns; not a result). Extrapolation, not measured over a full run: 40 epochs max is about 37 min; early stopping may end it sooner. No D-FINE accuracy exists yet |
+| 2b.2 onward | Not started | TODO |
 
 ## Context
 
@@ -382,20 +383,37 @@ uv run python scripts/train_detector.py model=faster_rcnn
 and per-class recall per epoch to MLflow.
 **Done when:** the best-val checkpoint is evaluated once on test, and the run is logged.
 **Resources:** AMP, batch 4, input about 480: **3–4 GB VRAM, 6 GB RAM, 20–40 min** for 30 epochs.
+**Measured (2026-11-06):** 1.75 GiB peak allocated, 41 min; results in the status table above.
 
 ### Phase 2b.1 — D-FINE fine-tune (🔴 training; 🟢 smoke)
-**Goal:** train the main detector.
+**Goal:** train the main detector, D-FINE-S fine-tuned from `ustc-community/dfine-small-coco`.
 **Packages:** none.
-**Files:** `src/defectlens/detection/dfine.py`, `configs/model/dfine_s.yaml`, `tests/test_dfine.py`
-(tiny random-weight config, no download).
+**Files:** `src/defectlens/detection/{dfine,common}.py` (new), `trainer.py` (backend dispatch, accumulation,
+early stopping), `datamodule.py` (optional scale/shift augmentation), `faster_rcnn.py` (scheduler moved to
+`common.py`, behaviour unchanged), `configs/model/dfine_s.yaml`, `tests/test_dfine.py`, `tests/conftest.py`
+(shared tiny-data fixture; tests use a tiny random-weight D-FINE, no download).
 **Commands:**
 ```bash
 uv run python scripts/train_detector.py model=dfine_s trainer.fast_dev_run=true
 uv run python scripts/train_detector.py model=dfine_s
 ```
+**Design decisions taken from the Faster R-CNN run** (val AP@50 plateaued near epoch 10 while val recall fell
+from about 0.82 to 0.74 and train loss kept dropping, so the model overfits 1,260 images):
+- **Early stopping on val** (`patience: 10` epochs without a better val AP@50:95, `epochs: 40` instead of
+  the planned 60). The best-val checkpoint is already what gets scored on test, so stopping only saves time;
+  it never touches test.
+- **Stronger augmentation:** on top of flips and brightness/contrast, random scale 0.75-1.25 and shift up to
+  10% (`scale_translate: 0.5`), boxes transformed with the image, borders mid-gray.
+- Not done: EMA, mosaic/mixup, a lower LR. Both changes above are applied together, so the report cannot
+  attribute any gain to one of them, and D-FINE differs from Faster R-CNN in many other ways anyway.
+  Whether either helps is read from the val curves of the full run, not assumed.
+- Optimizer settings are from the official D-FINE recipe, scaled, and untuned: AdamW, LR 1e-4 (backbone
+  0.5x), weight decay 1e-4 (not on biases/norms), grad clip 0.1, cosine with 100 warm-up optimizer steps,
+  effective batch 16 (8 x 2). Input 640 to match the ONNX export spike.
 **Done when:** a full run completes without OOM; the best-val checkpoint is saved; peak VRAM is logged.
-**Resources:** AMP, batch 8, accumulate 2, 640: **4–6 GB VRAM, 6–8 GB RAM, 45–90 min** for 60 epochs. OOM
-fallback: batch 4 with accumulate 4, then input 512, then D-FINE-N.
+**Resources (measured in dev runs):** AMP, batch 8, accumulate 2, 640 px: **3.4 GiB peak VRAM allocated**
+(3.6 GiB reserved), about 55 s/epoch, so 40 epochs is at most about 37 min (estimate; early stopping may stop
+sooner). The OOM fallbacks (batch 4 x 4, input 512, D-FINE-N) are not needed at this VRAM.
 
 ### Phase 2b.2 — Comparison and confusion matrix (🟢)
 **Goal:** the results table.

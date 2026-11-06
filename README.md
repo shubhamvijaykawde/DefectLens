@@ -6,10 +6,10 @@ detector for unseen defects (VisA), exported to ONNX and served as an API. Work 
 
 ## Status
 
-Phases 0a-0c (environment, project skeleton, risk spikes), 1a-1b (data, splits, preprocessing) and 2a.1
-(evaluation code, classical baseline) are done; Faster R-CNN (2a.2) has its code and smoke test, and its
-full training run has not been done. The only accuracy numbers so far are the classical baseline's
-(below). TODO: deep-model results arrive with Phases 2b-4.
+Phases 0a-0c (environment, project skeleton, risk spikes), 1a-1b (data, splits, preprocessing),
+2a.1 (evaluation code, classical baseline) and 2a.2 (Faster R-CNN) are done. D-FINE-S (2b.1) has its code,
+tests and smoke run; its full training run has not been done. Measured so far: the classical baseline and
+Faster R-CNN (below). TODO: D-FINE and anomaly results arrive with Phases 2b-4.
 
 ## Setup (WSL2 Ubuntu, NVIDIA GPU)
 
@@ -77,5 +77,39 @@ components. It has no class output, so it is scored class-agnostically:
 
 Its best `bg_sigma` (64) is at the edge of the search grid and was not extended after test was scored.
 
-Faster R-CNN: `uv run python scripts/train_detector.py model=faster_rcnn trainer.fast_dev_run=true` is the
-smoke test. The full run is TODO (no Faster R-CNN results yet).
+## Faster R-CNN (ResNet50-FPN v2)
+
+`uv run python scripts/train_detector.py model=faster_rcnn` (AMP, batch 4, 480 px, 30 epochs, 41 min, 1.75 GiB
+peak VRAM; MLflow run `377b83c4...`). The best-val checkpoint (epoch 28, chosen by val AP@50:95) is scored
+once on test. Recall and precision are at score threshold 0.5.
+
+| metric | val | test |
+|---|---|---|
+| AP@50 | 0.7228 | 0.7613 |
+| AP@50:95 | 0.3780 | 0.4224 |
+| recall | 0.7398 | 0.7771 |
+| precision | 0.6868 | 0.6778 |
+| FP / image | 0.8259 | 0.8593 |
+| recall_max (any score) | 0.9047 | 0.9315 |
+
+| class (test) | AP@50 | recall |
+|---|---|---|
+| crazing | 0.4113 | 0.5253 |
+| inclusion | 0.8108 | 0.8212 |
+| patches | 0.9128 | 0.8603 |
+| pitted_surface | 0.8540 | 0.8281 |
+| rolled-in_scale | 0.6173 | 0.6765 |
+| scratches | 0.9615 | 0.9605 |
+
+Crazing and rolled-in scale are the weak classes. The model overfits: train loss fell every epoch
+(0.650 to 0.078) but val AP@50 peaked at 0.7379 in epoch 10 and then stayed at 0.70-0.73, while val recall
+dropped from 0.8215 (epoch 8) to about 0.74. Val AP@50:95 still rose slowly, so the AP@50:95 criterion kept
+a late checkpoint. The test numbers exceed val; with 270 images per split and a single seed, differences of
+this size are not yet shown to be meaningful. D-FINE therefore uses early stopping on val plus
+scale/shift augmentation (see [PLAN.md](PLAN.md), Phase 2b.1).
+
+## D-FINE-S
+
+Code and smoke test only: `uv run python scripts/train_detector.py model=dfine_s trainer.fast_dev_run=true`.
+Short dev runs measured 3.4 GiB peak VRAM and about 55 s/epoch at batch 8 x 2, 640 px. The full run and its
+accuracy are TODO (no D-FINE results yet).
