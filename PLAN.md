@@ -14,8 +14,10 @@ Plan approved 2026-11-01 (revision 2).
 | 2a.1 Eval code + classical baseline | **Done** | `eval/{detection,confusion,report}.py`: COCO-style AP, agrees with `pycocotools` to 1e-9 on random data (test); a hand-computed fixture matches exactly (AP = 253/303) and a perfect prediction scores 1.0. Classical baseline (class-agnostic), tuned on val over 120 configs (best: bg_sigma 64, smooth_sigma 2, z_thresh 1.5, close_kernel 5, min_area 200), MLflow run `eae981c9b1ec4ab8b9219da640f7c77d`, 32 s on CPU. **Val: AP@50 0.0941, AP@50:95 0.0408, recall 0.2073. Test (scored once): AP@50 0.1072, AP@50:95 0.0490, recall 0.1990, precision 0.0909, 4.63 false positives/image.** The best `bg_sigma` sits on the grid edge (64); the grid was not extended after seeing test, to avoid tuning on it. The baseline is weak, as expected |
 | 2a.2 Faster R-CNN | **Done** (you ran it; MLflow run `377b83c4a275444cb422dcf88986040c`) | ResNet50-FPN v2, COCO-pretrained, AMP, batch 4, 480 px, 30 epochs, 315 it/epoch. **Val (best-val checkpoint, epoch 28 chosen on val AP@50:95): AP@50 0.7228, AP@50:95 0.3780, recall 0.7398. Test (scored once): AP@50 0.7613, AP@50:95 0.4224, recall 0.7771, precision 0.6778, 0.8593 FP/image, recall_max 0.9315** (recall/precision at score 0.5). Per class on test (AP@50 / recall): crazing 0.4113 / 0.5253, inclusion 0.8108 / 0.8212, patches 0.9128 / 0.8603, pitted_surface 0.8540 / 0.8281, rolled-in_scale 0.6173 / 0.6765, scratches 0.9615 / 0.9605. Peak VRAM 1,752 MiB allocated / 2,262 MiB reserved; about 82 s/epoch, 2,452 s (41 min) total, below the 45-55 min extrapolation. **Overfitting pattern:** train loss fell every epoch (0.650 to 0.078) while val AP@50 peaked at 0.7379 in epoch 10 and then stayed between 0.70 and 0.73, and val recall fell from 0.8215 (epoch 8) to about 0.74 (0.7398 at the end). Val AP@50:95 kept creeping up to about 0.378, which is why the AP@50:95 criterion picked epoch 28. The test numbers sit above val (0.7613 vs 0.7228 AP@50); with 270 images per split that gap is within what split noise could produce, but it is not measured here (no repeat seeds yet) |
 | 2b.1 D-FINE-S | **Done** (you ran it; MLflow run `2f90dfc4cce244a187414c018f62208a`) | D-FINE-S from `dfine-small-coco`, AMP, batch 8 x 2, 640 px, 40 epochs, 158 it/epoch. **Val (best-val checkpoint = epoch 40): AP@50 0.7105, AP@50:95 0.4346, recall 0.6641. Test (scored once): AP@50 0.7304, AP@50:95 0.4442, recall 0.6927, precision 0.7411, 0.5630 FP/image, recall_max 0.9936** (recall/precision at score 0.5). Per class on test (AP@50 / recall): crazing 0.3493 / 0.2020, inclusion 0.8474 / 0.8079, patches 0.9065 / 0.8603, pitted_surface 0.8236 / 0.7188, rolled-in_scale 0.4895 / 0.5490, scratches 0.9658 / 0.9737. Peak VRAM 3,394 MiB allocated / 3,620 MiB reserved; about 55 s/epoch, 2,210 s (37 min) total, matching the estimate. **Early stopping never fired:** val AP@50:95 rose slowly to 0.4346 at the last epoch (best epoch = epoch 40), so the 40-epoch budget ended the run, not patience, and more epochs might still help (not tried). The Faster R-CNN pattern (val recall falling after epoch 8) did not appear: D-FINE val recall stayed between 0.64 and 0.66 over the last 20 epochs, but this run cannot say whether the augmentation is the reason |
-| 2b.2 Comparison | **Done** | `scripts/compare_detectors.py` builds `reports/detection_comparison.md` and `reports/figures/confusion_{faster_rcnn,dfine_s}.png` from MLflow (val read at each run's best epoch). Numbers equal the ones you pasted. **Not like-for-like** (augmentation, input size, optimizer, batch, epoch budget differ; one seed each); see the report. Gates: 78 tests in 42 s, ruff and mypy clean. A matched Faster R-CNN rerun is recommended, not run (🔴, below) |
-| 3a onward | Not started | TODO |
+| 2b.2 Comparison | **Done** | `scripts/compare_detectors.py` builds `reports/detection_comparison.md` and `reports/figures/confusion_{faster_rcnn,dfine_s}.png` from MLflow (val read at each run's best epoch). Numbers equal the ones you pasted. **Not like-for-like** (augmentation, input size, optimizer, batch, epoch budget differ; one seed each); see the report. Gates: 78 tests in 42 s, ruff and mypy clean. The matched Faster R-CNN rerun was then run (row 2b.3) |
+| 2b.3 Matched Faster R-CNN rerun | **Done** (you ran it; MLflow run `e73bd71a`, name `faster_rcnn_aug`) | Same recipe as `faster_rcnn` plus only `scale_translate: 0.5` (the D-FINE augmentation); 30 epochs, 2,470 s, peak 1,752 MiB allocated / 2,264 MiB reserved. **Val (best epoch 23): AP@50 0.7513, AP@50:95 0.3996, recall 0.8048. Test (scored once): AP@50 0.7921, AP@50:95 0.4319, recall 0.8535, precision 0.5648, 1.5296 FP/image, recall_max 0.9841.** Per class on test (AP@50 / recall): crazing 0.5329 / 0.6970, inclusion 0.8229 / 0.9139, patches 0.9131 / 0.8971, pitted_surface 0.8940 / 0.9062, rolled-in_scale 0.6082 / 0.7157, scratches 0.9815 / 1.0000. **What it shows (single seed, 270 images/split, remaining recipe differences kept):** (1) Augmentation helped Faster R-CNN: test AP@50 +0.031 and AP@50:95 +0.010 (val +0.029 / +0.022), recall at 0.5 up from 0.777 to 0.854, but precision down from 0.678 to 0.565 and false alarms on background up from 230 to 411 in the test confusion matrix. (2) D-FINE-S's AP@50:95 lead shrinks but does not vanish: test 0.4442 vs 0.4319 (gap 0.012, was 0.022 against the original run); val 0.4346 vs 0.3996 (gap 0.035, was 0.057). (3) Faster R-CNN's AP@50 lead grows: test 0.7921 vs 0.7304 (gap 0.062, was 0.031), val 0.7513 vs 0.7105. (4) So D-FINE is not shown to be the better architecture here: it leads only on the stricter AP@50:95 and by a margin close to what one seed could move; Faster R-CNN leads on AP@50, recall and crazing/rolled-in recall, D-FINE on precision. Caveats: D-FINE's best epoch was its last (40), so it may be under-trained; the Faster R-CNN val AP@50:95 wobbles between 0.38 and 0.40 over epochs 19-30, so the best-epoch pick (23) is noisy; SGD vs AdamW, 480 vs 640 px and batch differ. Seeds would be needed to claim more |
+| 3a PatchCore and AnomalyDINO | **In progress**: 🟢 code, tests and cashew smoke done; 🔴 full 4-category runs pending (you run) | Code: `anomaly/{base,datamodule,patchcore,anomaly_dino,runner}.py`, `eval/anomaly.py` (image AUROC, pixel AUROC, AUPRO; AUPRO agrees with anomalib's to 1e-3 in a test), `scripts/train_anomaly.py`. Gates: 100 tests, ruff and mypy clean. **Cashew smoke, scored on `threshold_calibration` only (75 images), single seed, 450 normal train images, hyperparameters untuned defaults:** PatchCore (wide_resnet50_2, 224 px, coreset 0.01 = 3,528 rows; MLflow `patchcore_cashew`): image AUROC 0.9464, pixel AUROC 0.9911, AUPRO 0.9195; fit 19 s, peak VRAM 809 MiB, peak RAM 3.8 GiB. AnomalyDINO (DINOv2-small, 252 px, all 145,800 patches, all 450 images): image AUROC 0.9624, pixel AUROC 0.9952, AUPRO 0.9100; fit 3 s, scoring 2 s, peak VRAM 1,390 MiB, peak RAM 1.9 GiB. Heatmaps in `outputs/anomaly/*/heatmaps.png` look right (hot spots on the defects). Findings: a first AnomalyDINO run scored with batch 16 hit 8,982 MiB peak VRAM (more than the card; WSL spilled to system memory) because the kNN similarity matrix grows with batch x patches x bank rows, so scoring now uses `eval_batch_size` 2 (that run was deleted from MLflow). Image AUROC moved 0.9608 to 0.9624 between batch 16 and 2 (numerical, not a model change). 75 images means one image is about 1.3 points of AUROC, so the 0.0160 gap between the models is not meaningful. |
+| 3b onward | Not started | TODO |
 
 ## Context
 
@@ -440,17 +442,17 @@ like-for-like. Confusion matrices are row-normalised heat maps with counts, at I
   boxes missed in the matrix). Rolled-in scale is also worse for D-FINE (AP@50 0.4895 vs 0.6173).
 - Errors are almost all misses and false alarms, not class swaps: wrong-class matches are 3 (Faster R-CNN)
   and 1 (D-FINE).
-**Matched Faster R-CNN rerun (recommended, 🔴, not run):** the one recipe difference that can be matched
-exactly is the augmentation, since the other differences (SGD vs AdamW, 480 vs 640 px, batch) belong to each
-architecture's own recipe. Early stopping did not fire for D-FINE, so it is not a difference that matters.
-It costs about 41 min and 1.75 GiB VRAM, and tells us whether D-FINE's AP@50:95 lead survives when
-Faster R-CNN also gets scale/shift augmentation. Worth doing before any claim about the architectures.
+**Matched Faster R-CNN rerun (done, row 2b.3 of the status table):** the one recipe difference that can be matched
+exactly is the augmentation, so `faster_rcnn_aug` adds only `scale_translate: 0.5` (SGD vs AdamW, 480 vs 640 px
+and batch stay each architecture's own). Command used, with a separate checkpoint directory so the original
+`models/faster_rcnn/best.pt` is kept:
 ```bash
 uv run python scripts/train_detector.py model=faster_rcnn +model.augment.scale_translate=0.5 +model.run_name=faster_rcnn_aug model.checkpoint_dir=models/faster_rcnn_aug 2>&1 | tee ~/faster_rcnn_aug_run.log
 uv run python scripts/compare_detectors.py runs=classical,faster_rcnn,faster_rcnn_aug,dfine_s
 ```
-(a separate checkpoint directory keeps the original `models/faster_rcnn/best.pt`). Optional, 2x run time:
-3 seeds of the best model.
+Result: D-FINE-S's AP@50:95 lead over Faster R-CNN roughly halves on test (0.022 to 0.012) and Faster R-CNN's
+AP@50 lead doubles (0.031 to 0.062); see row 2b.3 for the numbers and caveats. Optional, 2x run time:
+3 seeds of each model, which is what it would take to say more.
 **Resources:** CPU only, under 1 min.
 
 ### Phase 3a — PatchCore and AnomalyDINO (🔴 training; 🟢 smoke)
@@ -468,12 +470,24 @@ official test and on `threshold_calibration`. Model and hyperparameter choices u
 `threshold_evaluation` is not touched in Phase 3.
 **Done when:** each category has both models logged; heatmaps saved; anomalib's `val` data is explicitly
 `threshold_calibration`, so its adaptive threshold and normalization never see `threshold_evaluation`.
-**Resources:**
-- **PatchCore is the highest VRAM risk.** About 900 images × 784 patches × 1,536 dims × 4 bytes ≈ **4.3 GB**
-  before coreset, at input 224 (arithmetic, not measured). Use coreset ratio 0.01, input 224. **5–7.5 GB
-  VRAM, 8–10 GB RAM, 20–60 min** for 4 categories. Fallback: random-subsample patches, or run the coreset on CPU.
-- AnomalyDINO: **2–3 GB VRAM, 6 GB RAM, 15–30 min** for 4 categories.
-- Close other GPU apps first. Coverage of all 12 categories is a later repeat of the same command.
+**Scope change (flag):** the original text asked for metrics on "the full official test and on
+`threshold_calibration`" while also saying `threshold_evaluation` is not touched. The full official test contains
+`threshold_evaluation`, so Phase 3 scores `threshold_calibration` only; the evaluation half is used once in Phase 4.
+**Design:** we do not use anomalib's `Engine`/datamodule (their splits and adaptive thresholds are not ours). Our
+`VisaImages` reads the fixed split files; the torch models from anomalib run inside thin wrappers. PatchCore's
+memory bank is built by our own streaming coreset (embeddings in CPU RAM, greedy k-center on 128-d random
+projections), because anomalib's version holds every embedding on the GPU (about 4.3 GB plus a copy for 900 images).
+**Resources (cashew smoke measured; others extrapolated by arithmetic, not measured):**
+- PatchCore: measured 0.8 GiB VRAM, 3.8 GiB RAM, 33 s wall for 450 images. For 900-image categories expect about
+  1.2 GiB VRAM and 6-7 GiB RAM (embeddings 4.3 GB in RAM), about 1 min each.
+- AnomalyDINO: measured 1.4 GiB VRAM, 1.9 GiB RAM, 17 s wall for 450 images. For 900 images the bank is 291,600
+  rows (0.45 GB) and scoring at batch 2 needs about 3 GiB VRAM; about 30 s each.
+- Total for the 8 runs: about 6-8 min (model weights are cached). Close other GPU apps first.
+**Full command (🔴 because it exceeds the "smoke" scope, expected under 10 min):**
+```bash
+uv run python scripts/train_anomaly.py model=patchcore,anomaly_dino category=cashew,candle,pcb1,macaroni2 2>&1 | tee ~/anomaly_3a.log
+```
+(the cashew runs are repeated, so MLflow gets a second `*_cashew` run; `compare` scripts take the latest.)
 
 ### Phase 3b — EfficientAD (🔴 overnight; 🟢 smoke)
 **Goal:** the speed baseline.

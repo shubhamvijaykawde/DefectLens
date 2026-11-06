@@ -7,3 +7,4 @@ categories: [cashew, candle, pcb1, macaroni2]
 seed: 42
 # 50/50 split of the official 1cls test set, stratified by category and label.
 # threshold_calibration: choose thresholds/models. threshold_evaluation: one frozen-threshold run.
+dvc_file: data/raw/visa.dvc   # dataset version logged with every run

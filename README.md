@@ -7,9 +7,10 @@ detector for unseen defects (VisA), exported to ONNX and served as an API. Work 
 ## Status
 
 Phases 0a-0c (environment, project skeleton, risk spikes), 1a-1b (data, splits, preprocessing),
-2a.1 (evaluation code, classical baseline), 2a.2 (Faster R-CNN), 2b.1 (D-FINE-S) and 2b.2 (comparison) are
-done. Measured so far: the classical baseline, Faster R-CNN and D-FINE-S (below). TODO: anomaly results
-arrive with Phases 3-4; a matched Faster R-CNN rerun is recommended but not run.
+2a.1 (evaluation code, classical baseline), 2a.2 (Faster R-CNN), 2b.1 (D-FINE-S), 2b.2 (comparison) and
+the matched Faster R-CNN rerun are done. Measured so far: the classical baseline, Faster R-CNN (with and
+without scale/shift augmentation) and D-FINE-S (below). Phase 3a (PatchCore, AnomalyDINO) has code and tests;
+the full anomaly runs are pending (TODO), so there are no anomaly results yet.
 
 ## Setup (WSL2 Ubuntu, NVIDIA GPU)
 
@@ -132,13 +133,33 @@ generated from MLflow by `uv run python scripts/compare_detectors.py`.
 |---|---|---|---|---|---|---|
 | classical (class-agnostic) | 0.1072 | 0.0490 | 0.1990 | 0.0909 | 4.6296 | 0.1990 |
 | Faster R-CNN | 0.7613 | 0.4224 | 0.7771 | 0.6778 | 0.8593 | 0.9315 |
+| Faster R-CNN + scale/shift (`faster_rcnn_aug`) | 0.7921 | 0.4319 | 0.8535 | 0.5648 | 1.5296 | 0.9841 |
 | D-FINE-S | 0.7304 | 0.4442 | 0.6927 | 0.7411 | 0.5630 | 0.9936 |
 
-**This is not a like-for-like comparison.** D-FINE used scale/shift augmentation, 640 px input, AdamW, batch
-16 and a 40-epoch budget; Faster R-CNN used flips and brightness/contrast only, 480 px, SGD, batch 4 and 30
-epochs. (D-FINE's early stopping never triggered, so it did not change the outcome.) One seed each, 270 test
-images. D-FINE leads on AP@50:95, Faster R-CNN on AP@50; at a fixed score of 0.5 D-FINE is more precise and
-less sensitive, and the two score types are not equally calibrated for that threshold. Both models miss most
-of the crazing class and almost never confuse one class for another: the errors are missed defects and false
-alarms (see the confusion matrices in the report). A matched Faster R-CNN rerun with the same augmentation is
-recommended before drawing conclusions about the architectures (TODO, not run).
+**Not fully like-for-like.** `faster_rcnn_aug` gives Faster R-CNN the same scale/shift augmentation as D-FINE,
+but input size (480 vs 640 px), optimizer (SGD vs AdamW), batch and epoch budget (30 vs 40) still differ. One
+seed each, 270 test images.
+
+What the matched run shows: augmentation helped Faster R-CNN (test AP@50 +0.031, AP@50:95 +0.010, recall
+0.777 to 0.854) at the cost of precision (0.678 to 0.565; 230 to 411 false alarms on background). D-FINE's
+AP@50:95 lead shrinks from 0.022 to 0.012 on test (0.057 to 0.035 on val) but remains; Faster R-CNN's AP@50 lead
+grows from 0.031 to 0.062. So neither architecture is shown to be better: D-FINE leads on the stricter
+AP@50:95 and precision, Faster R-CNN on AP@50 and recall at 0.5, and a gap of 0.012 AP@50:95 on one seed is not
+shown to be meaningful. D-FINE's best epoch was its last (40), so it may be under-trained. Crazing is the
+weakest class for all (test recall 0.20 for D-FINE, 0.53 Faster R-CNN, 0.70 with augmentation), and no
+model confuses classes much: the errors are missed defects and false alarms (see the confusion matrices in the report).
+
+## Anomaly detection (Phase 3a, in progress)
+
+`uv run python scripts/train_anomaly.py model=patchcore category=cashew` (also `model=anomaly_dino`). Models fit
+on the normal VisA training images and are scored on the `threshold_calibration` half of the official test set
+(`threshold_evaluation` is not read until Phase 4). Metrics are threshold-free: image AUROC, pixel AUROC, AUPRO.
+Cashew only so far, single seed, 75 calibration images, untuned defaults (MLflow runs `patchcore_cashew`,
+`anomaly_dino_cashew`); the other three categories are TODO:
+
+| model (cashew, calibration) | image AUROC | pixel AUROC | AUPRO | fit | peak VRAM |
+|---|---|---|---|---|---|
+| PatchCore (WRN50, 224 px, coreset 1%) | 0.9464 | 0.9911 | 0.9195 | 19 s | 809 MiB |
+| AnomalyDINO (DINOv2-S, 252 px) | 0.9624 | 0.9952 | 0.9100 | 3 s | 1,390 MiB |
+
+With 75 images one image is about 1.3 AUROC points, so the models are not shown to differ.

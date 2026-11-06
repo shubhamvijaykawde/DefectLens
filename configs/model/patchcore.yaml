@@ -1,0 +1,13 @@
+# PatchCore baseline. Coreset ratio 0.01 (anomalib's default is 0.1) and 224 px input keep the
+# memory bank small; embeddings are held in CPU RAM and the coreset runs on random projections.
+name: patchcore
+backbone: wide_resnet50_2
+pre_trained: true
+layers: [layer2, layer3]
+image_size: [224, 224]
+coreset_ratio: 0.01
+num_neighbors: 9
+projection_dim: 128
+batch_size: 16       # fitting (embedding extraction)
+eval_batch_size: 8   # scoring; the kNN distance matrix is (batch x patches) x bank rows
+shots: null          # null = all normal training images; an integer = fixed random k-shot subset

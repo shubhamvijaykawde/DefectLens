@@ -19,16 +19,17 @@ REPORT = Path("reports/detection_comparison.md")
 FIGURES = Path("reports/figures")
 
 NOTE = """\
-**Not a like-for-like comparison.** Training recipes differ, so differences below mix architecture
-and recipe effects and cannot be attributed to either one:
+**Not a fully like-for-like comparison.** `faster_rcnn_aug` matches D-FINE-S on augmentation
+(both use scale/shift), but the rest of each recipe still differs, so differences below mix
+architecture and recipe effects and cannot be attributed to either one:
 
-- D-FINE-S was trained with scale/shift augmentation (`scale_translate`), 640 px input, effective
-  batch 16, AdamW, and early stopping configured (patience 10); Faster R-CNN had flips and
-  brightness/contrast only, 480 px, batch 4, SGD, and no early stopping.
+- D-FINE-S: 640 px input, effective batch 16, AdamW, 40 epochs, early stopping configured
+  (patience 10).
+- Faster R-CNN: 480 px, batch 4, SGD, 30 epochs, no early stopping. `faster_rcnn` (without
+  scale/shift) is the original recipe; `faster_rcnn_aug` adds only `scale_translate: 0.5`.
 - Both keep the best-val checkpoint (by val AP@50:95), so checkpoint selection is the same.
-- Early stopping was configured for D-FINE but never fired (see the protocol table: epochs run
-  vs. max), so in practice the difference is the augmentation, the epoch budget (40 vs 30) and the
-  rest of the recipe above.
+- D-FINE's best epoch was its last (40), so it may not have converged; Faster R-CNN's best epoch is
+  earlier than its last. Early stopping never fired for D-FINE (see the protocol table).
 - One seed per detector and 270 images per split: small differences are not shown to be meaningful.
 - recall, precision and FP/image are at a fixed score threshold of 0.5. D-FINE's sigmoid scores and
   Faster R-CNN's softmax scores are calibrated differently, so a fixed 0.5 favours one or the other;
