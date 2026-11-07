@@ -21,3 +21,7 @@ models/
 *.onnx
 *.engine
 .claude/settings.local.json
+
+# Imagenette for the EfficientAD penalty loss (auto-downloaded, about 1.5 GB)
+data/raw/imagenette/
+data/raw/imagenette.partial/

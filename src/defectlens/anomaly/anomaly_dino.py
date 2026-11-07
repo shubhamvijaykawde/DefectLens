@@ -49,6 +49,12 @@ class AnomalyDino:
         finally:
             self.model.eval()
 
+    @property
+    def memory_bank(self) -> torch.Tensor:
+        """The fitted patch memory bank, (rows, dim)."""
+        bank: torch.Tensor = self.model.memory_bank
+        return bank
+
     @torch.no_grad()
     def predict(self, images: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         out = self.model(images.to(self.device))

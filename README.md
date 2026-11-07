@@ -149,17 +149,38 @@ shown to be meaningful. D-FINE's best epoch was its last (40), so it may be unde
 weakest class for all (test recall 0.20 for D-FINE, 0.53 Faster R-CNN, 0.70 with augmentation), and no
 model confuses classes much: the errors are missed defects and false alarms (see the confusion matrices in the report).
 
-## Anomaly detection (Phase 3a, in progress)
+## Anomaly detection: PatchCore and AnomalyDINO (Phase 3a)
 
-`uv run python scripts/train_anomaly.py model=patchcore category=cashew` (also `model=anomaly_dino`). Models fit
-on the normal VisA training images and are scored on the `threshold_calibration` half of the official test set
-(`threshold_evaluation` is not read until Phase 4). Metrics are threshold-free: image AUROC, pixel AUROC, AUPRO.
-Cashew only so far, single seed, 75 calibration images, untuned defaults (MLflow runs `patchcore_cashew`,
-`anomaly_dino_cashew`); the other three categories are TODO:
+`uv run python scripts/train_anomaly.py model=patchcore,anomaly_dino category=cashew,candle,pcb1,macaroni2`.
+Models fit on the normal VisA training images and are scored on the `threshold_calibration` half of the official
+test set (`threshold_evaluation` is not read until Phase 4). Metrics are threshold-free: image AUROC, pixel AUROC,
+AUPRO. Single seed, 75 (cashew) or 100 calibration images, untuned defaults, one MLflow run per model and category. (Peak RAM
+is not tabulated: it was the process-wide maximum in this run, so the AnomalyDINO values are not its own; see PLAN.md.)
 
-| model (cashew, calibration) | image AUROC | pixel AUROC | AUPRO | fit | peak VRAM |
-|---|---|---|---|---|---|
-| PatchCore (WRN50, 224 px, coreset 1%) | 0.9464 | 0.9911 | 0.9195 | 19 s | 809 MiB |
-| AnomalyDINO (DINOv2-S, 252 px) | 0.9624 | 0.9952 | 0.9100 | 3 s | 1,390 MiB |
+| category | model | image AUROC | pixel AUROC | AUPRO | fit | peak VRAM |
+|---|---|---|---|---|---|---|
+| cashew | PatchCore (WRN50, 224 px, coreset 1%) | 0.9464 | 0.9911 | 0.9195 | 19 s | 809 MiB |
+| cashew | AnomalyDINO (DINOv2-S, 252 px) | 0.9624 | 0.9952 | 0.9100 | 2 s | 1,390 MiB |
+| candle | PatchCore | 0.9736 | 0.9910 | 0.9623 | 63 s | 1,513 MiB |
+| candle | AnomalyDINO | 0.9572 | 0.9841 | 0.9503 | 4 s | 2,686 MiB |
+| pcb1 | PatchCore | 0.9188 | 0.9967 | 0.9119 | 65 s | 1,536 MiB |
+| pcb1 | AnomalyDINO | 0.9304 | 0.9953 | 0.8323 | 16 s | 2,696 MiB |
+| macaroni2 | PatchCore | 0.7208 | 0.9412 | 0.8379 | 63 s | 1,513 MiB |
+| macaroni2 | AnomalyDINO | 0.7336 | 0.9354 | 0.7556 | 16 s | 2,686 MiB |
+| **mean of 4** | PatchCore | 0.8899 | 0.9800 | 0.9079 | | |
+| **mean of 4** | AnomalyDINO | 0.8959 | 0.9775 | 0.8620 | | |
 
-With 75 images one image is about 1.3 AUROC points, so the models are not shown to differ.
+What the numbers show (and do not): macaroni2 is the hard category for both models (image AUROC 0.72-0.73 against
+0.92-0.97 elsewhere). Image AUROC and pixel AUROC are close between the models, and with 75-100 images and one
+seed the differences of 0.01-0.02 are not shown to be meaningful. AUPRO is higher for PatchCore in all four
+categories (mean 0.908 vs 0.862, largest gaps on pcb1 and macaroni2), so the one consistent difference is how
+well the models cover whole defect regions, not how well they rank images. AnomalyDINO fits 4-16x faster here
+(it builds no coreset; the cause was not profiled). Per-category heatmaps are in `outputs/anomaly/*/heatmaps.png` (git-ignored).
+
+## Anomaly detection: EfficientAD (Phase 3b, in progress)
+
+Own training loop on anomalib's EfficientAD-S network (teacher/student/autoencoder, batch size 1, Imagenette
+penalty, map quantiles from a 10% hold-out of the training normals). Code and tests are done; a 500-step smoke run
+on cashew (0.7% of the 70,000-step schedule, 15.5 steps/s, 1.2 GiB VRAM) only checks that the pipeline works. The
+full 4-category training is pending (`uv run python scripts/train_anomaly.py model=efficientad category=cashew,candle,pcb1,macaroni2`,
+about 5 h, extrapolated). Results: TODO.

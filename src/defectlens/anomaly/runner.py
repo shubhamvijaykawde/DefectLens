@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import resource
 import time
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -24,12 +25,15 @@ from defectlens.anomaly.datamodule import (
     load_split_paths,
     make_loader,
 )
+from defectlens.anomaly.efficientad import EfficientAD
 from defectlens.anomaly.patchcore import PatchCore
 from defectlens.eval.anomaly import evaluate_anomaly, save_heatmap_grid
 from defectlens.seed import seed_everything
 from defectlens.tracking import tracked_run
 
-MODELS = ("patchcore", "anomaly_dino")
+MODELS = ("patchcore", "anomaly_dino", "efficientad")
+FAST_STEPS = 3  # training steps of a gradient-trained model under trainer.fast_dev_run
+PHASES = {"patchcore": "3a", "anomaly_dino": "3a", "efficientad": "3b"}
 
 
 def build_model(cfg: DictConfig, device: str, seed: int) -> AnomalyModel:
@@ -53,6 +57,23 @@ def build_model(cfg: DictConfig, device: str, seed: int) -> AnomalyModel:
             masking=bool(m.masking),
             coreset_subsampling=bool(m.coreset_subsampling),
             device=device,
+        )
+    if m.name == "efficientad":
+        return EfficientAD(
+            model_size=str(m.model_size),
+            teacher_out_channels=int(m.teacher_out_channels),
+            pretrained_teacher=bool(m.pretrained_teacher),
+            imagenet_dir=Path(m.imagenet_dir),
+            image_size=(int(m.image_size[0]), int(m.image_size[1])),
+            max_steps=FAST_STEPS if cfg.trainer.fast_dev_run else int(m.max_steps),
+            lr=float(m.lr),
+            weight_decay=float(m.weight_decay),
+            train_batch_size=int(m.train_batch_size),
+            holdout_fraction=float(m.holdout_fraction),
+            log_every=int(m.log_every),
+            num_workers=int(cfg.trainer.num_workers),
+            device=device,
+            seed=seed,
         )
     msg = f"unknown anomaly model {m.name!r}, expected one of {MODELS}"
     raise ValueError(msg)
@@ -92,7 +113,11 @@ def run_anomaly(cfg: DictConfig, category: str) -> dict[str, float]:
     train_loader = make_loader(train_ds, bs, workers)
     calib_loader = make_loader(calib_ds, int(cfg.model.eval_batch_size), workers)
 
-    name = f"{cfg.model.name}_{category}" + (f"_{cfg.model.shots}shot" if cfg.model.shots else "")
+    name = (
+        f"{cfg.model.name}_{category}"
+        + (f"_{cfg.model.shots}shot" if cfg.model.shots else "")
+        + str(cfg.get("run_suffix", ""))  # e.g. +run_suffix=_smoke keeps a smoke run apart
+    )
     out_dir = Path("outputs/anomaly") / name
     model = build_model(cfg, dev, seed)
 
@@ -105,7 +130,9 @@ def run_anomaly(cfg: DictConfig, category: str) -> dict[str, float]:
     pred = collect_predictions(model, calib_loader, dev)
     score_s = time.perf_counter() - t0
     peak_vram = torch.cuda.max_memory_allocated() / 2**20 if dev.startswith("cuda") else 0.0
-    peak_ram = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024  # MiB on Linux
+    # Process-wide running maximum (MiB on Linux): per run only when the run has its own process,
+    # which train_anomaly.py arranges (see child_commands).
+    peak_ram = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
 
     metrics = evaluate_anomaly(pred.scores, pred.labels, pred.maps, pred.masks)
     extra = {
@@ -116,9 +143,12 @@ def run_anomaly(cfg: DictConfig, category: str) -> dict[str, float]:
         "peak_vram_alloc_mib": peak_vram,
         "peak_ram_mib": peak_ram,
     }
-    bank = getattr(model, "model", None)
-    bank_rows = int(bank.memory_bank.shape[0]) if bank is not None else 0
-    extra["memory_bank_rows"] = float(bank_rows)
+    bank = getattr(model, "memory_bank", None)  # memory-bank models only
+    fit_info = getattr(model, "fit_info", None)  # gradient-trained models only
+    if bank is not None:
+        extra["memory_bank_rows"] = float(bank.shape[0])
+    if callable(fit_info):
+        extra.update(fit_info())
 
     heatmap = out_dir / "heatmaps.png"
     save_heatmap_grid(
@@ -140,23 +170,45 @@ def run_anomaly(cfg: DictConfig, category: str) -> dict[str, float]:
             cfg.experiment, config, seed=seed, dvc_file=dvc, run_name=name,
             tracking_uri=cfg.mlflow.tracking_uri, artifact_root=cfg.mlflow.artifact_root,
         ):
-            mlflow.set_tags({"phase": "3a", "category": category, "model": str(cfg.model.name),
-                             "eval_split": "threshold_calibration"})
+            mlflow.set_tags({
+                "phase": PHASES[str(cfg.model.name)], "category": category,
+                "model": str(cfg.model.name), "eval_split": "threshold_calibration",
+            })
             mlflow.log_metrics({f"calib/{k}": v for k, v in metrics.items()})
             mlflow.log_metrics(extra)
             mlflow.log_artifact(str(heatmap))
             mlflow.log_artifact(str(scores_json))
-        if bank is not None:  # keep the memory bank for Phase 4 (git-ignored)
-            ckpt = Path("models/anomaly") / name
+            for row in getattr(model, "history", []):  # training loss curve, one point per window
+                mlflow.log_metrics(
+                    {k: v for k, v in row.items() if k != "step"}, step=int(row["step"])
+                )
+        ckpt = Path("models/anomaly") / name  # kept for Phase 4 / 5 (git-ignored)
+        if bank is not None:
             ckpt.mkdir(parents=True, exist_ok=True)
-            torch.save(bank.memory_bank.cpu(), ckpt / "memory_bank.pt")
+            torch.save(bank.cpu(), ckpt / "memory_bank.pt")
+        elif isinstance(model, EfficientAD):
+            ckpt.mkdir(parents=True, exist_ok=True)
+            torch.save(model.state_dict(), ckpt / "model.pt")
 
     print(
         f"{name}: " + " ".join(f"{k}={v:.4f}" for k, v in metrics.items())
         + f" | fit {fit_s:.0f}s score {score_s:.0f}s peak VRAM {peak_vram:.0f} MiB "
-        f"peak RAM {peak_ram:.0f} MiB bank {bank_rows} rows"
+        f"peak RAM {peak_ram:.0f} MiB"
+        + (f" bank {bank.shape[0]} rows" if bank is not None else "")
     )
     return {**metrics, **extra}
+
+
+def child_commands(
+    models: Sequence[str], categories: Sequence[str], rest: Sequence[str]
+) -> list[list[str]]:
+    """Argument lists (after ``train_anomaly.py``) that run each (model, category) alone.
+
+    ``train_anomaly.py`` starts one process per combination because ``peak_ram_mib`` is the
+    process-wide ``ru_maxrss``: in a shared process every run after the largest one would report
+    that run's peak, and GPU memory would not be freed between runs.
+    """
+    return [[f"model={m}", f"category={c}", *rest] for m in models for c in categories]
 
 
 def parse_list(value: str) -> list[str]:

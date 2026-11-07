@@ -149,3 +149,13 @@ def test_loader_is_deterministic(tiny_visa: dict[str, Path]) -> None:
     a = [b["path"] for b in make_loader(ds, 4, 0)]
     b = [b["path"] for b in make_loader(ds, 4, 0)]
     assert a == b
+
+
+def test_child_commands_one_process_per_combination() -> None:
+    jobs = runner.child_commands(["patchcore", "efficientad"], ["a", "b"], ["model.shots=5"])
+    assert jobs == [
+        ["model=patchcore", "category=a", "model.shots=5"],
+        ["model=patchcore", "category=b", "model.shots=5"],
+        ["model=efficientad", "category=a", "model.shots=5"],
+        ["model=efficientad", "category=b", "model.shots=5"],
+    ]

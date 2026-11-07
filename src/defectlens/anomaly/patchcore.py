@@ -103,6 +103,12 @@ class PatchCore:
         index = greedy_coreset(z, n, self.seed).to("cpu")
         self.model.memory_bank = gather_rows(chunks, index).to(self.device)
 
+    @property
+    def memory_bank(self) -> torch.Tensor:
+        """The fitted patch memory bank, (rows, dim)."""
+        bank: torch.Tensor = self.model.memory_bank
+        return bank
+
     @torch.no_grad()
     def predict(self, images: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         out = self.model(images.to(self.device))
