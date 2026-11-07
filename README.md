@@ -177,10 +177,44 @@ categories (mean 0.908 vs 0.862, largest gaps on pcb1 and macaroni2), so the one
 well the models cover whole defect regions, not how well they rank images. AnomalyDINO fits 4-16x faster here
 (it builds no coreset; the cause was not profiled). Per-category heatmaps are in `outputs/anomaly/*/heatmaps.png` (git-ignored).
 
-## Anomaly detection: EfficientAD (Phase 3b, in progress)
+## Anomaly detection: EfficientAD (Phase 3b)
 
-Own training loop on anomalib's EfficientAD-S network (teacher/student/autoencoder, batch size 1, Imagenette
-penalty, map quantiles from a 10% hold-out of the training normals). Code and tests are done; a 500-step smoke run
-on cashew (0.7% of the 70,000-step schedule, 15.5 steps/s, 1.2 GiB VRAM) only checks that the pipeline works. The
-full 4-category training is pending (`uv run python scripts/train_anomaly.py model=efficientad category=cashew,candle,pcb1,macaroni2`,
-about 5 h, extrapolated). Results: TODO.
+`uv run python scripts/train_anomaly.py model=efficientad category=cashew,candle,pcb1,macaroni2`. EfficientAD-S with
+our own training loop on anomalib's network: pretrained teacher, student and autoencoder, batch size 1, Imagenette
+penalty images, 70,000 steps, Adam 1e-4. The map-normalisation quantiles come from a seeded 10% hold-out of the
+training normals (so it trains on 90% of the images and never sees calibration data). Same protocol as above: single
+seed, untuned, scored on `threshold_calibration`.
+
+| category | image AUROC | pixel AUROC | AUPRO | training | peak VRAM | peak RAM |
+|---|---|---|---|---|---|---|
+| cashew | 0.9304 | 0.9625 | 0.7065 | 4,207 s | 1,202 MiB | 2,368 MiB |
+| candle | 0.9108 | 0.9161 | 0.8714 | 4,190 s | 1,202 MiB | 2,707 MiB |
+| pcb1 | 0.9716 | 0.9919 | 0.9506 | 4,188 s | 1,202 MiB | 2,711 MiB |
+| macaroni2 | 0.8268 | 0.9905 | 0.9191 | 4,186 s | 1,202 MiB | 2,707 MiB |
+| **mean of 4** | 0.9099 | 0.9652 | 0.8619 | | | |
+
+Each category ran in its own process, so the RAM column is per run. A 500-step smoke run on cashew
+(`efficientad_cashew_smoke500`, image AUROC 0.8840) only checked the pipeline and is not a result.
+
+## Three-model comparison (Phase 3c, few-shot curve TODO)
+
+Generated from MLflow by `uv run python scripts/compare_anomaly.py` into
+[reports/anomaly_comparison.md](reports/anomaly_comparison.md) (all three metrics per category, training cost, run
+ids). Means over the four categories, `threshold_calibration`, one seed:
+
+| model | image AUROC | pixel AUROC | AUPRO | training time per category | peak VRAM |
+|---|---|---|---|---|---|
+| PatchCore | 0.8899 | 0.9800 | 0.9079 | 19-65 s | 1,536 MiB |
+| AnomalyDINO | 0.8959 | 0.9775 | 0.8620 | 2-16 s | 2,696 MiB |
+| EfficientAD | 0.9099 | 0.9652 | 0.8619 | about 70 min | 1,202 MiB |
+
+No model wins everywhere. EfficientAD has the highest image AUROC on pcb1 (0.9716) and on macaroni2 (0.8268 against
+0.7208-0.7336 for the others) and the lowest on cashew and candle; its pixel AUROC is the lowest on cashew and
+candle, and its AUPRO is the highest on pcb1 and macaroni2 (pixel AUROC too on macaroni2). PatchCore has the best pixel AUROC and AUPRO on average. With
+75-100 calibration images, one seed and no confidence intervals, only the large gaps (macaroni2, EfficientAD's
+cashew AUPRO of 0.7065) are worth attention; the means differ by 0.01-0.02 in image AUROC, which is not shown to be
+meaningful. The "training time" column compares different things (a coreset, an embedding pass, 70,000 gradient
+steps) and is not inference cost; latency is measured in Phase 5.
+
+The few-shot curve (AnomalyDINO on 1, 5 and 10 normal images, 5 saved draws per category) is implemented and tested
+(`scripts/few_shot.py`) but its 60-run job has not been run yet: results and figure TODO.

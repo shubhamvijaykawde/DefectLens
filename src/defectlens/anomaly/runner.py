@@ -86,8 +86,18 @@ def _calibration_subset(labels: list[int], paths: list[str], n: int) -> list[str
     return anomalous + normal
 
 
-def run_anomaly(cfg: DictConfig, category: str) -> dict[str, float]:
-    """Train + score one (model, category). Returns the metrics dict (also logged to MLflow)."""
+def run_anomaly(
+    cfg: DictConfig,
+    category: str,
+    train_paths: Sequence[str] | None = None,
+    log_ram: bool = True,
+) -> dict[str, float]:
+    """Train + score one (model, category). Returns the metrics dict (also logged to MLflow).
+
+    ``train_paths`` fits on exactly these training images (the saved few-shot draws) instead of
+    the random subset ``cfg.model.shots`` would pick. ``log_ram=False`` leaves out
+    ``peak_ram_mib``, for callers that run many fits in one process (it is process-wide).
+    """
     seed = int(cfg.seed)
     seed_everything(seed)
     data = cfg.data
@@ -97,13 +107,17 @@ def run_anomaly(cfg: DictConfig, category: str) -> dict[str, float]:
     size = (int(cfg.model.image_size[0]), int(cfg.model.image_size[1]))
     workers = int(cfg.trainer.num_workers)
 
-    train_paths = few_shot_subset(
-        load_split_paths(Path(data.splits_dir), category, "train"), cfg.model.shots, seed
+    paths = (
+        list(train_paths)
+        if train_paths is not None
+        else few_shot_subset(
+            load_split_paths(Path(data.splits_dir), category, "train"), cfg.model.shots, seed
+        )
     )
     calib_paths = load_split_paths(Path(data.splits_dir), category, "threshold_calibration")
     if fast:
-        train_paths = train_paths[:8]
-    train_ds = VisaImages(root, csv_path, category, train_paths, size)
+        paths = paths[:8]
+    train_ds = VisaImages(root, csv_path, category, paths, size)
     calib_ds = VisaImages(root, csv_path, category, calib_paths, size)
     if fast:
         calib_ds = VisaImages(
@@ -141,8 +155,9 @@ def run_anomaly(cfg: DictConfig, category: str) -> dict[str, float]:
         "fit_seconds": fit_s,
         "score_seconds": score_s,
         "peak_vram_alloc_mib": peak_vram,
-        "peak_ram_mib": peak_ram,
     }
+    if log_ram:
+        extra["peak_ram_mib"] = peak_ram
     bank = getattr(model, "memory_bank", None)  # memory-bank models only
     fit_info = getattr(model, "fit_info", None)  # gradient-trained models only
     if bank is not None:
@@ -171,9 +186,11 @@ def run_anomaly(cfg: DictConfig, category: str) -> dict[str, float]:
             tracking_uri=cfg.mlflow.tracking_uri, artifact_root=cfg.mlflow.artifact_root,
         ):
             mlflow.set_tags({
-                "phase": PHASES[str(cfg.model.name)], "category": category,
+                "phase": str(cfg.get("phase", PHASES[str(cfg.model.name)])), "category": category,
                 "model": str(cfg.model.name), "eval_split": "threshold_calibration",
             })
+            if cfg.model.shots:  # few-shot runs: which k and which saved draw
+                mlflow.set_tags({"shots": str(cfg.model.shots), "draw": str(cfg.get("draw", ""))})
             mlflow.log_metrics({f"calib/{k}": v for k, v in metrics.items()})
             mlflow.log_metrics(extra)
             mlflow.log_artifact(str(heatmap))
@@ -192,8 +209,8 @@ def run_anomaly(cfg: DictConfig, category: str) -> dict[str, float]:
 
     print(
         f"{name}: " + " ".join(f"{k}={v:.4f}" for k, v in metrics.items())
-        + f" | fit {fit_s:.0f}s score {score_s:.0f}s peak VRAM {peak_vram:.0f} MiB "
-        f"peak RAM {peak_ram:.0f} MiB"
+        + f" | fit {fit_s:.0f}s score {score_s:.0f}s peak VRAM {peak_vram:.0f} MiB"
+        + (f" peak RAM {peak_ram:.0f} MiB" if log_ram else "")
         + (f" bank {bank.shape[0]} rows" if bank is not None else "")
     )
     return {**metrics, **extra}
