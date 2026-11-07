@@ -1,0 +1,35 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      # CPU torch/onnxruntime from the `cpu` group (the default groups are the CUDA build).
+      - name: Install dependencies
+        run: uv sync --locked --no-default-groups --group cpu --group serve --group dev
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Type check
+        run: uv run mypy src
+
+      # Default run: everything not marked slow (under 60 s locally).
+      - name: Tests (fast)
+        run: uv run pytest
+
+      # Tests marked `slow` (> 5 s each) are excluded from the default run and run here.
+      - name: Tests (slow)
+        run: uv run pytest -m slow

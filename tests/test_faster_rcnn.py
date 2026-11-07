@@ -105,6 +105,7 @@ def test_train_step_and_predict_in_original_frame(tiny_data: tuple[Path, Path]) 
         assert (d.boxes >= 0).all()
 
 
+@pytest.mark.slow  # ~24 s: builds the model and runs the trainer end to end on CPU
 def test_fast_dev_run_returns_a_valid_eval_dict(tiny_data: tuple[Path, Path]) -> None:
     raw, processed = tiny_data
     cfg = load_config([

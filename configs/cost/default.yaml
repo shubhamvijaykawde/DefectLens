@@ -1,0 +1,5 @@
+# Cost model for Phase 4a: cost = fn_fp_ratio * FN + FP (a miss costs this many false alarms).
+# The ratios are assumptions about a hypothetical line, not measured costs; the three values
+# bracket "a miss is a few false alarms" to "a miss is dominant".
+fn_fp_ratio: [5, 10, 50]
+iou: 0.5     # box matching for NEU-DET (class-aware, greedy, shared with the detection metrics)

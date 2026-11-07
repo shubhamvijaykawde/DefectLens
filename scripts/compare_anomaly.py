@@ -17,11 +17,13 @@ from defectlens.eval import anomaly_compare as ac
 from defectlens.tracking import DEFAULT_TRACKING_URI
 
 REPORT = Path("reports/anomaly_comparison.md")
+NOTES = Path("reports/anomaly_comparison_notes.md")  # hand-written, appended on every run
 FIGURE = Path("reports/figures/few_shot_curve.png")
 
 NOTE = """\
-- Every run is scored on `threshold_calibration` (75 images for cashew, 100 for the others);
-  `threshold_evaluation` is untouched until Phase 4. AUROC and AUPRO are threshold-free.
+- Every run here is scored on `threshold_calibration` (75 images for cashew, 100 for the others);
+  `threshold_evaluation` is not read by this script (Phase 4a's one frozen-threshold evaluation
+  is in `reports/thresholds.md`). AUROC and AUPRO are threshold-free.
 - Full-data rows are one run per model and category (seed 42, untuned defaults). With 75-100
   images and a single seed, small gaps are not shown to be meaningful.
 - "fit" is each model's own training step: PatchCore embeds the images and builds a 1% coreset,
@@ -90,6 +92,9 @@ def main() -> int:
     else:
         parts += ["## Few-shot AnomalyDINO", "", "TODO: no phase-3c runs in MLflow yet.", ""]
 
+    parts += ["## Notes", "",
+              NOTES.read_text().rstrip() if NOTES.is_file()
+              else "TODO: hand-written notes go in `reports/anomaly_comparison_notes.md`.", ""]
     REPORT.parent.mkdir(parents=True, exist_ok=True)
     REPORT.write_text("\n".join(parts))
     print(f"wrote {REPORT}" + (f" and {FIGURE}" if dino_few else ""))

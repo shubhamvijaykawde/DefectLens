@@ -7,10 +7,11 @@ detector for unseen defects (VisA), exported to ONNX and served as an API. Work 
 ## Status
 
 Phases 0a-0c (environment, project skeleton, risk spikes), 1a-1b (data, splits, preprocessing),
-2a.1 (evaluation code, classical baseline), 2a.2 (Faster R-CNN), 2b.1 (D-FINE-S), 2b.2 (comparison) and
-the matched Faster R-CNN rerun are done. Measured so far: the classical baseline, Faster R-CNN (with and
-without scale/shift augmentation) and D-FINE-S (below). Phase 3a (PatchCore, AnomalyDINO) has code and tests;
-the full anomaly runs are pending (TODO), so there are no anomaly results yet.
+2a.1 (evaluation code, classical baseline), 2a.2 (Faster R-CNN), 2b.1 (D-FINE-S), 2b.2 (comparison), the
+matched Faster R-CNN rerun, 3a-3c (PatchCore, AnomalyDINO, EfficientAD, few-shot curve) and 4a (cost-based
+thresholds, one frozen evaluation, error gallery) are done. Not started: ONNX export, TensorRT, the API and demo
+(Phases 4b and 5 onward). Every number below comes from an MLflow run or a script output; details per phase are
+in [PLAN.md](PLAN.md).
 
 ## Setup (WSL2 Ubuntu, NVIDIA GPU)
 
@@ -18,9 +19,12 @@ the full anomaly runs are pending (TODO), so there are no anomaly results yet.
 uv sync                              # locked env from uv.lock, CUDA 13 torch build
 uv run python scripts/check_env.py   # prints torch/CUDA/ONNX Runtime provider status
 uv run pytest && uv run ruff check . && uv run mypy src
+uv run pytest -m slow                # the 3 tests above 5 s, skipped by default
 ```
 
-CI uses the `cpu` dependency group (`uv sync --group cpu --no-group cu130`), not yet exercised.
+The default run skips tests marked `slow` (above 5 s each) to stay under 60 s: 176 tests in 31 s here, plus 3 slow
+tests in 47 s. `.github/workflows/ci.yml` installs the `cpu` group from the lockfile and runs ruff, mypy, `pytest` and
+`pytest -m slow`; it has not run yet (it needs a push).
 
 ## Spike findings so far
 
@@ -196,7 +200,7 @@ seed, untuned, scored on `threshold_calibration`.
 Each category ran in its own process, so the RAM column is per run. A 500-step smoke run on cashew
 (`efficientad_cashew_smoke500`, image AUROC 0.8840) only checked the pipeline and is not a result.
 
-## Three-model comparison (Phase 3c, few-shot curve TODO)
+## Three-model comparison (Phase 3c)
 
 Generated from MLflow by `uv run python scripts/compare_anomaly.py` into
 [reports/anomaly_comparison.md](reports/anomaly_comparison.md) (all three metrics per category, training cost, run
@@ -216,5 +220,90 @@ cashew AUPRO of 0.7065) are worth attention; the means differ by 0.01-0.02 in im
 meaningful. The "training time" column compares different things (a coreset, an embedding pass, 70,000 gradient
 steps) and is not inference cost; latency is measured in Phase 5.
 
-The few-shot curve (AnomalyDINO on 1, 5 and 10 normal images, 5 saved draws per category) is implemented and tested
-(`scripts/few_shot.py`) but its 60-run job has not been run yet: results and figure TODO.
+## Few-shot AnomalyDINO (Phase 3c)
+
+`uv run python scripts/few_shot.py shots=1,5,10 draws=5` fits AnomalyDINO on 1, 5 and 10 normal images (5 saved,
+nested draws per category: the 1-shot image is part of the 5-shot set, which is part of the 10-shot set), 60 runs in
+total, scored on `threshold_calibration`. Image AUROC, mean ± sample standard deviation over the 5 draws
+(not a confidence interval); the mean row averages the four categories within each draw first:
+
+| category | 1-shot | 5-shot | 10-shot | full data |
+|---|---|---|---|---|
+| cashew | 0.8962 ± 0.0274 | 0.9034 ± 0.0219 | 0.9112 ± 0.0161 | 0.9624 |
+| candle | 0.8560 ± 0.0294 | 0.8699 ± 0.0186 | 0.8962 ± 0.0214 | 0.9572 |
+| pcb1 | 0.7039 ± 0.1747 | 0.7714 ± 0.0251 | 0.7902 ± 0.0333 | 0.9304 |
+| macaroni2 | 0.6241 ± 0.0920 | 0.6934 ± 0.0532 | 0.6768 ± 0.0484 | 0.7336 |
+| **mean** | 0.7700 ± 0.0588 | 0.8095 ± 0.0157 | 0.8186 ± 0.0138 | 0.8959 |
+
+![few-shot curve](reports/figures/few_shot_curve.png)
+
+Pixel AUROC and AUPRO tables, run ids and notes: [reports/anomaly_comparison.md](reports/anomaly_comparison.md).
+
+- Going from 1 to 5 shots helps (mean +0.040); from 5 to 10 it does not clearly (+0.009, smaller than the
+  0.014-0.016 spread over draws).
+- Ten shots stay below full data in every category (gaps of 0.051 to 0.140) and, in the mean, below full-data
+  PatchCore (0.8899) and EfficientAD (0.9099); those two use all 450-900 normal images and only AnomalyDINO was run
+  few-shot.
+- The choice of the single 1-shot image matters: two of five pcb1 draws score about chance (0.5080, 0.5200), and so
+  do two macaroni2 draws (0.5124, 0.5384). More images do not always help within a draw (macaroni2 draw 2: 0.7828
+  at 5 shots, 0.6932 at 10). Why those images fail was not examined.
+- Cost: at most 1 s to fit and 1-2 s to score per run, peak VRAM 106 / 122 / 155 MiB for 1 / 5 / 10 shots; the whole
+  job took about 4 minutes (inferred from file timestamps, not timed).
+
+**EfficientAD training loss.** A rise in `loss_ae` on macaroni2 (from about 0.08 to 0.22) was reported from the log;
+the logged curves of all four categories in MLflow show no such rise: `loss_ae` falls in every category (macaroni2:
+0.597 over the first 5,000 steps to 0.188 over the last 5,000, no 5,000-step window higher than the one before),
+and the quoted values match different categories (about 0.08 is cashew or candle at step 8,000; macaroni2 is 0.43
+at that step). macaroni2 and pcb1 plateau at a much higher autoencoder loss than cashew and candle (final 0.17-0.18
+against 0.03-0.04) and all four drop at the learning-rate step; there is no sign of a bug, though a falling loss
+does not prove the implementation right.
+
+## Cost-based thresholds, one frozen evaluation, error gallery (Phase 4a)
+
+```bash
+uv run python scripts/select_thresholds.py cost.fn_fp_ratio=5,10,50   # reads threshold_calibration / val only
+uv run python scripts/evaluate_thresholds.py                          # frozen file only; run once
+uv run python scripts/error_gallery.py top_k=20
+```
+
+Cost = `fn_fp_ratio * FN + FP`, with ratios 5, 10 and 50 that are assumptions, not measured costs. VisA: one
+image-level threshold per model and category (`score >= t`). NEU-DET: one score threshold per detector, boxes matched
+at IoU 0.5. Thresholds are chosen on `threshold_calibration` (VisA) or `val` (NEU-DET), written to
+`reports/frozen_thresholds.json` with a content hash, and evaluated once on `threshold_evaluation` or `test`. The code
+refuses to select on evaluation data, to evaluate without the frozen file, or to evaluate changed thresholds a second
+time. Every reloaded model first reproduced its saved scores exactly. Full tables with 95% intervals:
+[reports/thresholds.md](reports/thresholds.md); figures and notes: [reports/error_gallery.md](reports/error_gallery.md).
+
+Total evaluation cost over the four VisA categories, against the best constant policy (flag nothing or everything):
+
+| model (selection cost in brackets) | ratio 5 | ratio 10 | ratio 50 |
+|---|---|---|---|
+| PatchCore | 153 (96) | 152 (104) | 274 (107) |
+| AnomalyDINO | 105 (94) | 129 (99) | 201 (108) |
+| EfficientAD | 136 (96) | 146 (96) | 226 (96) |
+| best constant policy | 175 | 175 | 175 |
+
+NEU-DET test cost (the best constant policy, flag nothing, costs 3,140 / 6,280 / 31,400):
+
+| detector | ratio 5 | ratio 10 | ratio 50 |
+|---|---|---|---|
+| Faster R-CNN | 918 | 1,403 | 4,296 |
+| Faster R-CNN + scale/shift | 871 | 1,359 | 3,440 |
+| D-FINE-S | 1,005 | 1,578 | 4,109 |
+
+- Thresholds chosen on 75-100 images carried over only partly: of 36 VisA thresholds 25 beat the constant policy on the
+  evaluation half, 3 tie it and 8 are worse; the cost per image was higher on evaluation than on selection for 31.
+  30 selections missed no anomalous image, and 13 of those missed at least one on evaluation; at ratio 50 each such miss
+  costs 50, which is why all three models end above 175.
+- On macaroni2 (image AUROC 0.72-0.83) no threshold helps: AnomalyDINO ties the constant policy at every ratio and
+  PatchCore is worse than it.
+- All nine NEU-DET thresholds beat the constant policy by a wide margin. The matched Faster R-CNN has the lowest test
+  cost at every ratio and D-FINE-S at none, although D-FINE-S has the best AP@50:95; one seed, and gaps like 871 against
+  918 are not shown to be meaningful.
+- Error gallery: most NEU-DET misses are boxes of the right class that miss IoU 0.5 (74 of 84 for Faster R-CNN, 73 of
+  79 matched, 75 of 103 D-FINE-S have a same-class kept box overlapping them), concentrated in crazing and rolled-in
+  scale; the VisA errors are mostly false alarms. These are observations on a few images; nothing was tuned on them.
+- Limits: the ratios are assumed; the VisA halves are 50% (cashew 67%) anomalous, not a production prevalence; NEU-DET
+  `val` also chose the checkpoints, so its selection costs are optimistic, and NEU-DET `test` had been scored in
+  Phase 2 at a fixed score of 0.5 (no threshold tuned on it); the evaluation split was also read, read-only, by the
+  error gallery; one seed throughout.

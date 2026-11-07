@@ -80,7 +80,11 @@ packages = ["src/defectlens"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
+# The default run skips tests marked slow (> 5 s each) to stay under 60 s. Run them with
+# `pytest -m slow`, everything with `pytest -m ""`. Note: -m also applies to a test selected by
+# node id, so a slow test needs `-m slow` there too. CI runs both (see .github/workflows/ci.yml).
+addopts = "-q -m 'not slow'"
+markers = ["slow: takes more than 5 s on CPU; excluded from the default run, run in CI"]
 
 [tool.ruff]
 line-length = 100

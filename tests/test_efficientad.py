@@ -90,6 +90,7 @@ def test_state_dict_round_trip_gives_same_scores(fitted: EfficientAD) -> None:
     assert torch.allclose(fitted.predict(x)[0], other.predict(x)[0])
 
 
+@pytest.mark.slow  # ~6 s: two CPU trainings
 def test_same_seed_same_training() -> None:
     runs = []
     for _ in range(2):
@@ -211,6 +212,7 @@ def test_build_model_caps_steps_under_fast_dev_run(
     assert isinstance(model, EfficientAD) and model.max_steps == runner.FAST_STEPS
 
 
+@pytest.mark.slow  # ~8 s: full runner round trip with MLflow
 def test_run_anomaly_efficientad_logs_loss_curve_and_checkpoint(
     tiny_visa: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

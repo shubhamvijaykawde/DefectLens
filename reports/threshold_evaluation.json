@@ -1,0 +1,1267 @@
+{
+ "frozen_file_sha256": "fef28e76e6d6233e16cdd1b3e251267d063efc678e0261519e7b1badcf401b1a",
+ "frozen_meta": {
+  "cost_model": "cost = fn_fp_ratio * FN + FP",
+  "created": "2026-11-07T23:19:34+00:00",
+  "git_commit": "1b2620b6a283daffbd4a0b4b7667a944da417df2+dirty",
+  "iou": 0.5,
+  "ratios": [
+   5.0,
+   10.0,
+   50.0
+  ],
+  "selection_splits": {
+   "neu_det": "val",
+   "visa": "threshold_calibration"
+  },
+  "version": 1,
+  "visa_dataset": "8c619473c5b5a844450f7e0a2267c35d.dir"
+ },
+ "git_commit": "1b2620b6a283daffbd4a0b4b7667a944da417df2+dirty",
+ "rows": [
+  {
+   "domain": "visa",
+   "model": "patchcore",
+   "category": "cashew",
+   "ratio": 5.0,
+   "threshold": 27.79173183441162,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 75,
+   "tp": 50,
+   "fp": 19,
+   "fn": 0,
+   "tn": 6,
+   "cost": 19.0,
+   "cost_per_item": 0.25333333333333335,
+   "selection_cost_per_item": 0.21333333333333335,
+   "trivial_cost": 25.0,
+   "recall": 1.0,
+   "precision": 0.7246376811594203,
+   "false_positive_rate": 0.76,
+   "recall_ci": [
+    0.9286499658256813,
+    1.0
+   ],
+   "false_positive_rate_ci": [
+    0.5656994004476144,
+    0.8850384226967327
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "patchcore",
+   "category": "cashew",
+   "ratio": 10.0,
+   "threshold": 27.79173183441162,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 75,
+   "tp": 50,
+   "fp": 19,
+   "fn": 0,
+   "tn": 6,
+   "cost": 19.0,
+   "cost_per_item": 0.25333333333333335,
+   "selection_cost_per_item": 0.21333333333333335,
+   "trivial_cost": 25.0,
+   "recall": 1.0,
+   "precision": 0.7246376811594203,
+   "false_positive_rate": 0.76,
+   "recall_ci": [
+    0.9286499658256813,
+    1.0
+   ],
+   "false_positive_rate_ci": [
+    0.5656994004476144,
+    0.8850384226967327
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "patchcore",
+   "category": "cashew",
+   "ratio": 50.0,
+   "threshold": 27.79173183441162,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 75,
+   "tp": 50,
+   "fp": 19,
+   "fn": 0,
+   "tn": 6,
+   "cost": 19.0,
+   "cost_per_item": 0.25333333333333335,
+   "selection_cost_per_item": 0.21333333333333335,
+   "trivial_cost": 25.0,
+   "recall": 1.0,
+   "precision": 0.7246376811594203,
+   "false_positive_rate": 0.76,
+   "recall_ci": [
+    0.9286499658256813,
+    1.0
+   ],
+   "false_positive_rate_ci": [
+    0.5656994004476144,
+    0.8850384226967327
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "patchcore",
+   "category": "candle",
+   "ratio": 5.0,
+   "threshold": 26.57999610900879,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 100,
+   "tp": 47,
+   "fp": 10,
+   "fn": 3,
+   "tn": 40,
+   "cost": 25.0,
+   "cost_per_item": 0.25,
+   "selection_cost_per_item": 0.1,
+   "trivial_cost": 50.0,
+   "recall": 0.94,
+   "precision": 0.8245614035087719,
+   "false_positive_rate": 0.2,
+   "recall_ci": [
+    0.8378265662912299,
+    0.9793854036353695
+   ],
+   "false_positive_rate_ci": [
+    0.11243629945973886,
+    0.3303737210448524
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "patchcore",
+   "category": "candle",
+   "ratio": 10.0,
+   "threshold": 25.739545822143555,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 100,
+   "tp": 48,
+   "fp": 15,
+   "fn": 2,
+   "tn": 35,
+   "cost": 35.0,
+   "cost_per_item": 0.35,
+   "selection_cost_per_item": 0.11,
+   "trivial_cost": 50.0,
+   "recall": 0.96,
+   "precision": 0.7619047619047619,
+   "false_positive_rate": 0.3,
+   "recall_ci": [
+    0.8653966212204534,
+    0.9889613473391734
+   ],
+   "false_positive_rate_ci": [
+    0.1910338908960936,
+    0.4375061227736339
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "patchcore",
+   "category": "candle",
+   "ratio": 50.0,
+   "threshold": 25.739545822143555,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 100,
+   "tp": 48,
+   "fp": 15,
+   "fn": 2,
+   "tn": 35,
+   "cost": 115.0,
+   "cost_per_item": 1.15,
+   "selection_cost_per_item": 0.11,
+   "trivial_cost": 50.0,
+   "recall": 0.96,
+   "precision": 0.7619047619047619,
+   "false_positive_rate": 0.3,
+   "recall_ci": [
+    0.8653966212204534,
+    0.9889613473391734
+   ],
+   "false_positive_rate_ci": [
+    0.1910338908960936,
+    0.4375061227736339
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "patchcore",
+   "category": "pcb1",
+   "ratio": 5.0,
+   "threshold": 33.70662307739258,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 100,
+   "tp": 44,
+   "fp": 15,
+   "fn": 6,
+   "tn": 35,
+   "cost": 45.0,
+   "cost_per_item": 0.45,
+   "selection_cost_per_item": 0.27,
+   "trivial_cost": 50.0,
+   "recall": 0.88,
+   "precision": 0.7457627118644068,
+   "false_positive_rate": 0.3,
+   "recall_ci": [
+    0.7619492111337642,
+    0.9438247628937535
+   ],
+   "false_positive_rate_ci": [
+    0.1910338908960936,
+    0.4375061227736339
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "patchcore",
+   "category": "pcb1",
+   "ratio": 10.0,
+   "threshold": 32.75788116455078,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 100,
+   "tp": 49,
+   "fp": 32,
+   "fn": 1,
+   "tn": 18,
+   "cost": 42.0,
+   "cost_per_item": 0.42,
+   "selection_cost_per_item": 0.33,
+   "trivial_cost": 50.0,
+   "recall": 0.98,
+   "precision": 0.6049382716049383,
+   "false_positive_rate": 0.64,
+   "recall_ci": [
+    0.8950431352816304,
+    0.9964608319110235
+   ],
+   "false_positive_rate_ci": [
+    0.5014076201030195,
+    0.7586143703281711
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "patchcore",
+   "category": "pcb1",
+   "ratio": 50.0,
+   "threshold": 31.880505561828613,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 100,
+   "tp": 50,
+   "fp": 44,
+   "fn": 0,
+   "tn": 6,
+   "cost": 44.0,
+   "cost_per_item": 0.44,
+   "selection_cost_per_item": 0.36,
+   "trivial_cost": 50.0,
+   "recall": 1.0,
+   "precision": 0.5319148936170213,
+   "false_positive_rate": 0.88,
+   "recall_ci": [
+    0.9286499658256813,
+    1.0
+   ],
+   "false_positive_rate_ci": [
+    0.7619492111337642,
+    0.9438247628937535
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "patchcore",
+   "category": "macaroni2",
+   "ratio": 5.0,
+   "threshold": 35.37711715698242,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 100,
+   "tp": 45,
+   "fp": 39,
+   "fn": 5,
+   "tn": 11,
+   "cost": 64.0,
+   "cost_per_item": 0.64,
+   "selection_cost_per_item": 0.43,
+   "trivial_cost": 50.0,
+   "recall": 0.9,
+   "precision": 0.5357142857142857,
+   "false_positive_rate": 0.78,
+   "recall_ci": [
+    0.7863950966521162,
+    0.956524876008429
+   ],
+   "false_positive_rate_ci": [
+    0.6475818431054045,
+    0.8724621377569771
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "patchcore",
+   "category": "macaroni2",
+   "ratio": 10.0,
+   "threshold": 34.6840763092041,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 100,
+   "tp": 49,
+   "fp": 46,
+   "fn": 1,
+   "tn": 4,
+   "cost": 56.0,
+   "cost_per_item": 0.56,
+   "selection_cost_per_item": 0.44,
+   "trivial_cost": 50.0,
+   "recall": 0.98,
+   "precision": 0.5157894736842106,
+   "false_positive_rate": 0.92,
+   "recall_ci": [
+    0.8950431352816304,
+    0.9964608319110235
+   ],
+   "false_positive_rate_ci": [
+    0.8116149745493629,
+    0.9684509967442093
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "patchcore",
+   "category": "macaroni2",
+   "ratio": 50.0,
+   "threshold": 34.6840763092041,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 100,
+   "tp": 49,
+   "fp": 46,
+   "fn": 1,
+   "tn": 4,
+   "cost": 96.0,
+   "cost_per_item": 0.96,
+   "selection_cost_per_item": 0.44,
+   "trivial_cost": 50.0,
+   "recall": 0.98,
+   "precision": 0.5157894736842106,
+   "false_positive_rate": 0.92,
+   "recall_ci": [
+    0.8950431352816304,
+    0.9964608319110235
+   ],
+   "false_positive_rate_ci": [
+    0.8116149745493629,
+    0.9684509967442093
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "anomaly_dino",
+   "category": "cashew",
+   "ratio": 5.0,
+   "threshold": 0.08463512361049652,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 75,
+   "tp": 50,
+   "fp": 6,
+   "fn": 0,
+   "tn": 19,
+   "cost": 6.0,
+   "cost_per_item": 0.08,
+   "selection_cost_per_item": 0.13333333333333333,
+   "trivial_cost": 25.0,
+   "recall": 1.0,
+   "precision": 0.8928571428571429,
+   "false_positive_rate": 0.24,
+   "recall_ci": [
+    0.9286499658256813,
+    1.0
+   ],
+   "false_positive_rate_ci": [
+    0.11496157730326725,
+    0.43430059955238565
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "anomaly_dino",
+   "category": "cashew",
+   "ratio": 10.0,
+   "threshold": 0.08463512361049652,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 75,
+   "tp": 50,
+   "fp": 6,
+   "fn": 0,
+   "tn": 19,
+   "cost": 6.0,
+   "cost_per_item": 0.08,
+   "selection_cost_per_item": 0.13333333333333333,
+   "trivial_cost": 25.0,
+   "recall": 1.0,
+   "precision": 0.8928571428571429,
+   "false_positive_rate": 0.24,
+   "recall_ci": [
+    0.9286499658256813,
+    1.0
+   ],
+   "false_positive_rate_ci": [
+    0.11496157730326725,
+    0.43430059955238565
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "anomaly_dino",
+   "category": "cashew",
+   "ratio": 50.0,
+   "threshold": 0.08463512361049652,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 75,
+   "tp": 50,
+   "fp": 6,
+   "fn": 0,
+   "tn": 19,
+   "cost": 6.0,
+   "cost_per_item": 0.08,
+   "selection_cost_per_item": 0.13333333333333333,
+   "trivial_cost": 25.0,
+   "recall": 1.0,
+   "precision": 0.8928571428571429,
+   "false_positive_rate": 0.24,
+   "recall_ci": [
+    0.9286499658256813,
+    1.0
+   ],
+   "false_positive_rate_ci": [
+    0.11496157730326725,
+    0.43430059955238565
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "anomaly_dino",
+   "category": "candle",
+   "ratio": 5.0,
+   "threshold": 0.0934174694120884,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 100,
+   "tp": 48,
+   "fp": 7,
+   "fn": 2,
+   "tn": 43,
+   "cost": 17.0,
+   "cost_per_item": 0.17,
+   "selection_cost_per_item": 0.19,
+   "trivial_cost": 50.0,
+   "recall": 0.96,
+   "precision": 0.8727272727272727,
+   "false_positive_rate": 0.14,
+   "recall_ci": [
+    0.8653966212204534,
+    0.9889613473391734
+   ],
+   "false_positive_rate_ci": [
+    0.06950745262022862,
+    0.2618645719852809
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "anomaly_dino",
+   "category": "candle",
+   "ratio": 10.0,
+   "threshold": 0.08661350607872009,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 100,
+   "tp": 48,
+   "fp": 11,
+   "fn": 2,
+   "tn": 39,
+   "cost": 31.0,
+   "cost_per_item": 0.31,
+   "selection_cost_per_item": 0.24,
+   "trivial_cost": 50.0,
+   "recall": 0.96,
+   "precision": 0.8135593220338984,
+   "false_positive_rate": 0.22,
+   "recall_ci": [
+    0.8653966212204534,
+    0.9889613473391734
+   ],
+   "false_positive_rate_ci": [
+    0.12753786224302288,
+    0.35241815689459555
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "anomaly_dino",
+   "category": "candle",
+   "ratio": 50.0,
+   "threshold": 0.06935862824320793,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 100,
+   "tp": 50,
+   "fp": 23,
+   "fn": 0,
+   "tn": 27,
+   "cost": 23.0,
+   "cost_per_item": 0.23,
+   "selection_cost_per_item": 0.33,
+   "trivial_cost": 50.0,
+   "recall": 1.0,
+   "precision": 0.684931506849315,
+   "false_positive_rate": 0.46,
+   "recall_ci": [
+    0.9286499658256813,
+    1.0
+   ],
+   "false_positive_rate_ci": [
+    0.3296943460178263,
+    0.5960136567161192
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "anomaly_dino",
+   "category": "pcb1",
+   "ratio": 5.0,
+   "threshold": 0.07616421952843666,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 100,
+   "tp": 48,
+   "fp": 22,
+   "fn": 2,
+   "tn": 28,
+   "cost": 32.0,
+   "cost_per_item": 0.32,
+   "selection_cost_per_item": 0.17,
+   "trivial_cost": 50.0,
+   "recall": 0.96,
+   "precision": 0.6857142857142857,
+   "false_positive_rate": 0.44,
+   "recall_ci": [
+    0.8653966212204534,
+    0.9889613473391734
+   ],
+   "false_positive_rate_ci": [
+    0.3116198721023534,
+    0.5769421319985648
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "anomaly_dino",
+   "category": "pcb1",
+   "ratio": 10.0,
+   "threshold": 0.07616421952843666,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 100,
+   "tp": 48,
+   "fp": 22,
+   "fn": 2,
+   "tn": 28,
+   "cost": 42.0,
+   "cost_per_item": 0.42,
+   "selection_cost_per_item": 0.17,
+   "trivial_cost": 50.0,
+   "recall": 0.96,
+   "precision": 0.6857142857142857,
+   "false_positive_rate": 0.44,
+   "recall_ci": [
+    0.8653966212204534,
+    0.9889613473391734
+   ],
+   "false_positive_rate_ci": [
+    0.3116198721023534,
+    0.5769421319985648
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "anomaly_dino",
+   "category": "pcb1",
+   "ratio": 50.0,
+   "threshold": 0.07616421952843666,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 100,
+   "tp": 48,
+   "fp": 22,
+   "fn": 2,
+   "tn": 28,
+   "cost": 122.0,
+   "cost_per_item": 1.22,
+   "selection_cost_per_item": 0.17,
+   "trivial_cost": 50.0,
+   "recall": 0.96,
+   "precision": 0.6857142857142857,
+   "false_positive_rate": 0.44,
+   "recall_ci": [
+    0.8653966212204534,
+    0.9889613473391734
+   ],
+   "false_positive_rate_ci": [
+    0.3116198721023534,
+    0.5769421319985648
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "anomaly_dino",
+   "category": "macaroni2",
+   "ratio": 5.0,
+   "threshold": 0.06782500073313713,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 100,
+   "tp": 50,
+   "fp": 50,
+   "fn": 0,
+   "tn": 0,
+   "cost": 50.0,
+   "cost_per_item": 0.5,
+   "selection_cost_per_item": 0.48,
+   "trivial_cost": 50.0,
+   "recall": 1.0,
+   "precision": 0.5,
+   "false_positive_rate": 1.0,
+   "recall_ci": [
+    0.9286499658256813,
+    1.0
+   ],
+   "false_positive_rate_ci": [
+    0.9286499658256813,
+    1.0
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "anomaly_dino",
+   "category": "macaroni2",
+   "ratio": 10.0,
+   "threshold": 0.06782500073313713,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 100,
+   "tp": 50,
+   "fp": 50,
+   "fn": 0,
+   "tn": 0,
+   "cost": 50.0,
+   "cost_per_item": 0.5,
+   "selection_cost_per_item": 0.48,
+   "trivial_cost": 50.0,
+   "recall": 1.0,
+   "precision": 0.5,
+   "false_positive_rate": 1.0,
+   "recall_ci": [
+    0.9286499658256813,
+    1.0
+   ],
+   "false_positive_rate_ci": [
+    0.9286499658256813,
+    1.0
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "anomaly_dino",
+   "category": "macaroni2",
+   "ratio": 50.0,
+   "threshold": 0.06782500073313713,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 100,
+   "tp": 50,
+   "fp": 50,
+   "fn": 0,
+   "tn": 0,
+   "cost": 50.0,
+   "cost_per_item": 0.5,
+   "selection_cost_per_item": 0.48,
+   "trivial_cost": 50.0,
+   "recall": 1.0,
+   "precision": 0.5,
+   "false_positive_rate": 1.0,
+   "recall_ci": [
+    0.9286499658256813,
+    1.0
+   ],
+   "false_positive_rate_ci": [
+    0.9286499658256813,
+    1.0
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "efficientad",
+   "category": "cashew",
+   "ratio": 5.0,
+   "threshold": 0.07519631460309029,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 75,
+   "tp": 49,
+   "fp": 17,
+   "fn": 1,
+   "tn": 8,
+   "cost": 22.0,
+   "cost_per_item": 0.29333333333333333,
+   "selection_cost_per_item": 0.13333333333333333,
+   "trivial_cost": 25.0,
+   "recall": 0.98,
+   "precision": 0.7424242424242424,
+   "false_positive_rate": 0.68,
+   "recall_ci": [
+    0.8950431352816304,
+    0.9964608319110235
+   ],
+   "false_positive_rate_ci": [
+    0.48409913734576715,
+    0.8279501248310887
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "efficientad",
+   "category": "cashew",
+   "ratio": 10.0,
+   "threshold": 0.07519631460309029,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 75,
+   "tp": 49,
+   "fp": 17,
+   "fn": 1,
+   "tn": 8,
+   "cost": 27.0,
+   "cost_per_item": 0.36,
+   "selection_cost_per_item": 0.13333333333333333,
+   "trivial_cost": 25.0,
+   "recall": 0.98,
+   "precision": 0.7424242424242424,
+   "false_positive_rate": 0.68,
+   "recall_ci": [
+    0.8950431352816304,
+    0.9964608319110235
+   ],
+   "false_positive_rate_ci": [
+    0.48409913734576715,
+    0.8279501248310887
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "efficientad",
+   "category": "cashew",
+   "ratio": 50.0,
+   "threshold": 0.07519631460309029,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 75,
+   "tp": 49,
+   "fp": 17,
+   "fn": 1,
+   "tn": 8,
+   "cost": 67.0,
+   "cost_per_item": 0.8933333333333333,
+   "selection_cost_per_item": 0.13333333333333333,
+   "trivial_cost": 25.0,
+   "recall": 0.98,
+   "precision": 0.7424242424242424,
+   "false_positive_rate": 0.68,
+   "recall_ci": [
+    0.8950431352816304,
+    0.9964608319110235
+   ],
+   "false_positive_rate_ci": [
+    0.48409913734576715,
+    0.8279501248310887
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "efficientad",
+   "category": "candle",
+   "ratio": 5.0,
+   "threshold": 0.07723027840256691,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 100,
+   "tp": 49,
+   "fp": 39,
+   "fn": 1,
+   "tn": 11,
+   "cost": 44.0,
+   "cost_per_item": 0.44,
+   "selection_cost_per_item": 0.31,
+   "trivial_cost": 50.0,
+   "recall": 0.98,
+   "precision": 0.5568181818181818,
+   "false_positive_rate": 0.78,
+   "recall_ci": [
+    0.8950431352816304,
+    0.9964608319110235
+   ],
+   "false_positive_rate_ci": [
+    0.6475818431054045,
+    0.8724621377569771
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "efficientad",
+   "category": "candle",
+   "ratio": 10.0,
+   "threshold": 0.07723027840256691,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 100,
+   "tp": 49,
+   "fp": 39,
+   "fn": 1,
+   "tn": 11,
+   "cost": 49.0,
+   "cost_per_item": 0.49,
+   "selection_cost_per_item": 0.31,
+   "trivial_cost": 50.0,
+   "recall": 0.98,
+   "precision": 0.5568181818181818,
+   "false_positive_rate": 0.78,
+   "recall_ci": [
+    0.8950431352816304,
+    0.9964608319110235
+   ],
+   "false_positive_rate_ci": [
+    0.6475818431054045,
+    0.8724621377569771
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "efficientad",
+   "category": "candle",
+   "ratio": 50.0,
+   "threshold": 0.07723027840256691,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 100,
+   "tp": 49,
+   "fp": 39,
+   "fn": 1,
+   "tn": 11,
+   "cost": 89.0,
+   "cost_per_item": 0.89,
+   "selection_cost_per_item": 0.31,
+   "trivial_cost": 50.0,
+   "recall": 0.98,
+   "precision": 0.5568181818181818,
+   "false_positive_rate": 0.78,
+   "recall_ci": [
+    0.8950431352816304,
+    0.9964608319110235
+   ],
+   "false_positive_rate_ci": [
+    0.6475818431054045,
+    0.8724621377569771
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "efficientad",
+   "category": "pcb1",
+   "ratio": 5.0,
+   "threshold": 0.136735700070858,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 100,
+   "tp": 50,
+   "fp": 25,
+   "fn": 0,
+   "tn": 25,
+   "cost": 25.0,
+   "cost_per_item": 0.25,
+   "selection_cost_per_item": 0.11,
+   "trivial_cost": 50.0,
+   "recall": 1.0,
+   "precision": 0.6666666666666666,
+   "false_positive_rate": 0.5,
+   "recall_ci": [
+    0.9286499658256813,
+    1.0
+   ],
+   "false_positive_rate_ci": [
+    0.36644286412332855,
+    0.6335571358766714
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "efficientad",
+   "category": "pcb1",
+   "ratio": 10.0,
+   "threshold": 0.136735700070858,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 100,
+   "tp": 50,
+   "fp": 25,
+   "fn": 0,
+   "tn": 25,
+   "cost": 25.0,
+   "cost_per_item": 0.25,
+   "selection_cost_per_item": 0.11,
+   "trivial_cost": 50.0,
+   "recall": 1.0,
+   "precision": 0.6666666666666666,
+   "false_positive_rate": 0.5,
+   "recall_ci": [
+    0.9286499658256813,
+    1.0
+   ],
+   "false_positive_rate_ci": [
+    0.36644286412332855,
+    0.6335571358766714
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "efficientad",
+   "category": "pcb1",
+   "ratio": 50.0,
+   "threshold": 0.136735700070858,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 100,
+   "tp": 50,
+   "fp": 25,
+   "fn": 0,
+   "tn": 25,
+   "cost": 25.0,
+   "cost_per_item": 0.25,
+   "selection_cost_per_item": 0.11,
+   "trivial_cost": 50.0,
+   "recall": 1.0,
+   "precision": 0.6666666666666666,
+   "false_positive_rate": 0.5,
+   "recall_ci": [
+    0.9286499658256813,
+    1.0
+   ],
+   "false_positive_rate_ci": [
+    0.36644286412332855,
+    0.6335571358766714
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "efficientad",
+   "category": "macaroni2",
+   "ratio": 5.0,
+   "threshold": 0.05634339526295662,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 100,
+   "tp": 50,
+   "fp": 45,
+   "fn": 0,
+   "tn": 5,
+   "cost": 45.0,
+   "cost_per_item": 0.45,
+   "selection_cost_per_item": 0.44,
+   "trivial_cost": 50.0,
+   "recall": 1.0,
+   "precision": 0.5263157894736842,
+   "false_positive_rate": 0.9,
+   "recall_ci": [
+    0.9286499658256813,
+    1.0
+   ],
+   "false_positive_rate_ci": [
+    0.7863950966521162,
+    0.956524876008429
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "efficientad",
+   "category": "macaroni2",
+   "ratio": 10.0,
+   "threshold": 0.05634339526295662,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 100,
+   "tp": 50,
+   "fp": 45,
+   "fn": 0,
+   "tn": 5,
+   "cost": 45.0,
+   "cost_per_item": 0.45,
+   "selection_cost_per_item": 0.44,
+   "trivial_cost": 50.0,
+   "recall": 1.0,
+   "precision": 0.5263157894736842,
+   "false_positive_rate": 0.9,
+   "recall_ci": [
+    0.9286499658256813,
+    1.0
+   ],
+   "false_positive_rate_ci": [
+    0.7863950966521162,
+    0.956524876008429
+   ]
+  },
+  {
+   "domain": "visa",
+   "model": "efficientad",
+   "category": "macaroni2",
+   "ratio": 50.0,
+   "threshold": 0.05634339526295662,
+   "evaluation_split": "threshold_evaluation",
+   "n_items": 100,
+   "tp": 50,
+   "fp": 45,
+   "fn": 0,
+   "tn": 5,
+   "cost": 45.0,
+   "cost_per_item": 0.45,
+   "selection_cost_per_item": 0.44,
+   "trivial_cost": 50.0,
+   "recall": 1.0,
+   "precision": 0.5263157894736842,
+   "false_positive_rate": 0.9,
+   "recall_ci": [
+    0.9286499658256813,
+    1.0
+   ],
+   "false_positive_rate_ci": [
+    0.7863950966521162,
+    0.956524876008429
+   ]
+  },
+  {
+   "domain": "neu_det",
+   "model": "faster_rcnn",
+   "category": "all",
+   "ratio": 5.0,
+   "threshold": 0.4420500546693802,
+   "evaluation_split": "test",
+   "n_items": 628,
+   "tp": 494,
+   "fp": 248,
+   "fn": 134,
+   "tn": null,
+   "cost": 918.0,
+   "cost_per_item": 1.4617834394904459,
+   "selection_cost_per_item": 1.6066565809379727,
+   "trivial_cost": 3140.0,
+   "recall": 0.7866242038216561,
+   "precision": 0.6657681940700808,
+   "false_positive_rate": null
+  },
+  {
+   "domain": "neu_det",
+   "model": "faster_rcnn",
+   "category": "all",
+   "ratio": 10.0,
+   "threshold": 0.047950681298971176,
+   "evaluation_split": "test",
+   "n_items": 628,
+   "tp": 544,
+   "fp": 563,
+   "fn": 84,
+   "tn": null,
+   "cost": 1403.0,
+   "cost_per_item": 2.234076433121019,
+   "selection_cost_per_item": 2.6520423600605145,
+   "trivial_cost": 6280.0,
+   "recall": 0.8662420382165605,
+   "precision": 0.4914182475158085,
+   "false_positive_rate": null
+  },
+  {
+   "domain": "neu_det",
+   "model": "faster_rcnn",
+   "category": "all",
+   "ratio": 50.0,
+   "threshold": 0.0069574040826410055,
+   "evaluation_split": "test",
+   "n_items": 628,
+   "tp": 566,
+   "fp": 1196,
+   "fn": 62,
+   "tn": null,
+   "cost": 4296.0,
+   "cost_per_item": 6.840764331210191,
+   "selection_cost_per_item": 8.465960665658093,
+   "trivial_cost": 31400.0,
+   "recall": 0.9012738853503185,
+   "precision": 0.32122587968217936,
+   "false_positive_rate": null
+  },
+  {
+   "domain": "neu_det",
+   "model": "faster_rcnn_aug",
+   "category": "all",
+   "ratio": 5.0,
+   "threshold": 0.752099871635437,
+   "evaluation_split": "test",
+   "n_items": 628,
+   "tp": 502,
+   "fp": 241,
+   "fn": 126,
+   "tn": null,
+   "cost": 871.0,
+   "cost_per_item": 1.3869426751592357,
+   "selection_cost_per_item": 1.518910741301059,
+   "trivial_cost": 3140.0,
+   "recall": 0.7993630573248408,
+   "precision": 0.6756393001345895,
+   "false_positive_rate": null
+  },
+  {
+   "domain": "neu_det",
+   "model": "faster_rcnn_aug",
+   "category": "all",
+   "ratio": 10.0,
+   "threshold": 0.3149966895580292,
+   "evaluation_split": "test",
+   "n_items": 628,
+   "tp": 549,
+   "fp": 569,
+   "fn": 79,
+   "tn": null,
+   "cost": 1359.0,
+   "cost_per_item": 2.1640127388535033,
+   "selection_cost_per_item": 2.4145234493192134,
+   "trivial_cost": 6280.0,
+   "recall": 0.8742038216560509,
+   "precision": 0.49105545617173524,
+   "false_positive_rate": null
+  },
+  {
+   "domain": "neu_det",
+   "model": "faster_rcnn_aug",
+   "category": "all",
+   "ratio": 50.0,
+   "threshold": 0.03745400346815586,
+   "evaluation_split": "test",
+   "n_items": 628,
+   "tp": 595,
+   "fp": 1790,
+   "fn": 33,
+   "tn": null,
+   "cost": 3440.0,
+   "cost_per_item": 5.477707006369426,
+   "selection_cost_per_item": 6.5718608169440245,
+   "trivial_cost": 31400.0,
+   "recall": 0.947452229299363,
+   "precision": 0.24947589098532494,
+   "false_positive_rate": null
+  },
+  {
+   "domain": "neu_det",
+   "model": "dfine_s",
+   "category": "all",
+   "ratio": 5.0,
+   "threshold": 0.3876323699951172,
+   "evaluation_split": "test",
+   "n_items": 628,
+   "tp": 504,
+   "fp": 385,
+   "fn": 124,
+   "tn": null,
+   "cost": 1005.0,
+   "cost_per_item": 1.6003184713375795,
+   "selection_cost_per_item": 1.7685325264750378,
+   "trivial_cost": 3140.0,
+   "recall": 0.802547770700637,
+   "precision": 0.5669291338582677,
+   "false_positive_rate": null
+  },
+  {
+   "domain": "neu_det",
+   "model": "dfine_s",
+   "category": "all",
+   "ratio": 10.0,
+   "threshold": 0.34992140531539917,
+   "evaluation_split": "test",
+   "n_items": 628,
+   "tp": 525,
+   "fp": 548,
+   "fn": 103,
+   "tn": null,
+   "cost": 1578.0,
+   "cost_per_item": 2.5127388535031847,
+   "selection_cost_per_item": 2.8562783661119515,
+   "trivial_cost": 6280.0,
+   "recall": 0.8359872611464968,
+   "precision": 0.48928238583411,
+   "false_positive_rate": null
+  },
+  {
+   "domain": "neu_det",
+   "model": "dfine_s",
+   "category": "all",
+   "ratio": 50.0,
+   "threshold": 0.2353719174861908,
+   "evaluation_split": "test",
+   "n_items": 628,
+   "tp": 586,
+   "fp": 2009,
+   "fn": 42,
+   "tn": null,
+   "cost": 4109.0,
+   "cost_per_item": 6.542993630573249,
+   "selection_cost_per_item": 7.500756429652042,
+   "trivial_cost": 31400.0,
+   "recall": 0.9331210191082803,
+   "precision": 0.22581888246628132,
+   "false_positive_rate": null
+  }
+ ],
+ "context": {
+  "patchcore/cashew": {
+   "image_auroc": 0.972
+  },
+  "patchcore/candle": {
+   "image_auroc": 0.9644
+  },
+  "patchcore/pcb1": {
+   "image_auroc": 0.906
+  },
+  "patchcore/macaroni2": {
+   "image_auroc": 0.702
+  },
+  "anomaly_dino/cashew": {
+   "image_auroc": 0.9736
+  },
+  "anomaly_dino/candle": {
+   "image_auroc": 0.9772
+  },
+  "anomaly_dino/pcb1": {
+   "image_auroc": 0.912
+  },
+  "anomaly_dino/macaroni2": {
+   "image_auroc": 0.7624
+  },
+  "efficientad/cashew": {
+   "image_auroc": 0.8968
+  },
+  "efficientad/candle": {
+   "image_auroc": 0.8124
+  },
+  "efficientad/pcb1": {
+   "image_auroc": 0.9392
+  },
+  "efficientad/macaroni2": {
+   "image_auroc": 0.8516
+  },
+  "faster_rcnn/all": {
+   "map50": 0.7612832629923494,
+   "map50_95": 0.42235346480787767,
+   "recall": 0.7770700636942676,
+   "precision": 0.6777777777777778
+  },
+  "faster_rcnn_aug/all": {
+   "map50": 0.7921181685591475,
+   "map50_95": 0.43185930924388033,
+   "recall": 0.8535031847133758,
+   "precision": 0.5648050579557429
+  },
+  "dfine_s/all": {
+   "map50": 0.7303501536956521,
+   "map50_95": 0.4441870667015042,
+   "recall": 0.6926751592356688,
+   "precision": 0.7410562180579217
+  }
+ }
+}

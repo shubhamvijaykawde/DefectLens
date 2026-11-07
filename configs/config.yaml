@@ -3,6 +3,7 @@ defaults:
   - data: neu_det
   - preprocess: default
   - model: null
+  - cost: default
   - _self_
 
 seed: 42
