@@ -9,9 +9,8 @@ detector for unseen defects (VisA), exported to ONNX and served as an API. Work 
 Phases 0a-0c (environment, project skeleton, risk spikes), 1a-1b (data, splits, preprocessing),
 2a.1 (evaluation code, classical baseline), 2a.2 (Faster R-CNN), 2b.1 (D-FINE-S), 2b.2 (comparison), the
 matched Faster R-CNN rerun, 3a-3c (PatchCore, AnomalyDINO, EfficientAD, few-shot curve) and 4a (cost-based
-thresholds, one frozen evaluation, error gallery) are done. Phase 4b (leave-one-defect-type-out on VisA pcb1) has its code,
-tests and smoke check, but its runs have not been made, so the claim that the anomaly path catches what the detector
-misses is **not yet tested**. Not started: ONNX export, TensorRT, the API and demo (Phase 5 onward). Every number below
+thresholds, one frozen evaluation, error gallery) are done. Phase 4b (leave-one-defect-type-out on VisA pcb1) is run: it weakly supports the claim that the anomaly path catches
+defect types the detector never saw (clearly for `missing`, undecided for the rest, small sample), see its section. Not started: ONNX export, TensorRT, the API and demo (Phase 5 onward). Every number below
 comes from an MLflow run or a script output; details per phase are in [PLAN.md](PLAN.md).
 
 ## Setup (WSL2 Ubuntu, NVIDIA GPU)
@@ -329,15 +328,30 @@ is simply weak with 23 to 47 training images). A `none` run holds nothing out. T
 [configs/unseen/pcb1.yaml](configs/unseen/pcb1.yaml) before any run; the protocol and its limits are in
 [reports/unseen_defects.md](reports/unseen_defects.md).
 
-| held-out type | unseen images (evaluation half) | Faster R-CNN | PatchCore | AnomalyDINO | EfficientAD |
-|---|---|---|---|---|---|
-| melt | 28 | TODO | TODO | TODO | TODO |
-| missing | 7 | TODO | TODO | TODO | TODO |
-| bent | 9 | TODO | TODO | TODO | TODO |
-| scratch | 13 | TODO | TODO | TODO | TODO |
+Recall on the evaluation anomalies that contain the held-out type, as images caught / images, at the 5% budget · at the
+10% budget (the detector never saw the type; the anomaly models never see any anomaly):
 
-TODO: this table, the seen-type check and the sentence that says whether the headline claim holds, fill in from
-`reports/unseen_defects.md` after the runs. The claim is not made until then. Whatever the table shows, it is a small
-sample (7 to 28 unseen images per type, wide intervals), one seed, one category, and `threshold_evaluation` is read a
-second time here, for a different question than in Phase 4a (thresholds from calibration normals only; no 4a result
-changes).
+| held-out type | unseen images | Faster R-CNN | PatchCore | AnomalyDINO | EfficientAD |
+|---|---|---|---|---|---|
+| melt | 28 | 15 · 18 | 17 · 19 | 16 · 19 | 24 · 26 |
+| missing | 7 | 0 · 2 | 6 · 6 | 4 · 4 | 5 · 5 |
+| bent | 9 | 6 · 8 | 9 · 9 | 9 · 9 | 6 · 8 |
+| scratch | 13 | 10 · 12 | 9 · 11 | 8 · 9 | 13 · 13 |
+
+On the types it was trained on, at the 5% budget, the detector catches 44/50 of the control run's anomalies against 37
+(PatchCore), 33 (AnomalyDINO) and 41 (EfficientAD), so it is not simply weak; the anomaly path is a complement, not a
+better detector. Image AUROC on the held-out type (both halves, 15 to 54 images) is 0.963 / 0.860 / 0.759 / 0.901 for the
+detector (bent / melt / missing / scratch), 0.999 / 0.870 / 0.982 / 0.904 for PatchCore, 0.983 / 0.906 / 0.926 / 0.927 for
+AnomalyDINO and 0.896 / 0.964 / 0.936 / 0.995 for EfficientAD.
+
+**Verdict: weakly supports the claim, decides it for one type, contradicts it for none, and cannot decide it overall.**
+`missing` is clear: the detector flags 0/7 [0.00, 0.35] and PatchCore 6/7 [0.49, 0.97] with the same 2/50 false alarms.
+`melt` depends on the model (EfficientAD 24/28 against the detector's 15/28, PatchCore and AnomalyDINO about level), and
+`bent` and `scratch` are within noise. No anomaly model wins on every type, and the detector's recall on the held-out type
+is below its recall on the other types in all four runs, which fits the claim but does not prove novelty is the cause (the
+types differ in difficulty). It is a small sample (7 to 28 unseen images per type, wide intervals, no AUROC intervals), one
+seed, one category, a detector trained on 23 to 47 images, and operating points matched on the 50 calibration normals only
+(realised false alarms on the evaluation normals: 2 to 6 of 50 at the 5% budget). `threshold_evaluation` is read a second
+time here, for a different question than in Phase 4a, with the owner's approval on the condition that these five runs are
+the only ones and the recipe is not changed (both held); thresholds come from calibration normals only and no 4a result
+changes. Intervals, seen-type tables and notes: [reports/unseen_defects.md](reports/unseen_defects.md).

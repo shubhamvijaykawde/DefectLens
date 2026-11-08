@@ -263,7 +263,11 @@ def render_report(results: Sequence[Mapping[str, Any]]) -> str:
         "which is generous to both kinds of model. Intervals are 95% Wilson intervals.",
         "- `threshold_evaluation` was already used once, for the frozen Phase 4a thresholds, and "
         "is read again here for a different question with thresholds set on calibration normals "
-        "only; no Phase 4a threshold or result changes.",
+        "only; no Phase 4a threshold or result changes. **Decision (project owner):** this second "
+        "read was approved on two conditions: these five runs are the only runs, and the recipe "
+        "is not changed after seeing the results. Both held: one MLflow run per holdout, all at "
+        "the same commit, with `configs/unseen/pcb1.yaml` untouched since. Any further run or "
+        "recipe change would need a new, disclosed decision.",
         "",
     ]
 
