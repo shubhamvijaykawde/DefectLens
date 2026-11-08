@@ -39,6 +39,7 @@ Findings that Phase 5a must carry forward:
    (measured on the stem), and top-k proposal selection amplifies it into different queries. Whether
    this costs any **mAP** is not measured. Phase 5a must compare detection metrics with TF32 on and
    off before choosing a default, and benchmark latency both ways.
+   **Resolved in Phase 5a** (`reports/benchmark.md`): the raw outputs do change, AP does not (within about 0.001).
 
 TensorRT probe (informational): `TensorrtExecutionProvider` appears in `ort.get_available_providers()`
 for 1.31.1. I did not create a TensorRT session, so whether it actually works is untested (Phase 5b).

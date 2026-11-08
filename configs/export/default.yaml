@@ -1,0 +1,42 @@
+# Phase 5a: ONNX export, verification and benchmark. A plain file merged by the scripts over
+# `data=visa` (not a Hydra group choice), overridable from the command line, e.g.
+#   uv run python scripts/benchmark.py benchmark.runs=200 models=dfine_s
+#
+# Batch size is fixed at 1 (what the API serves). Detector input sizes come from the checkpoints.
+export:
+  out_dir: models/onnx                 # git-ignored (models/ is DVC / ignore territory)
+  report: reports/onnx_export.json     # one record per export attempt, failures included
+  models: [dfine_s, efficientad, faster_rcnn, patchcore, anomaly_dino]
+  detectors:
+    dfine_s: models/dfine_s/best.pt
+    faster_rcnn: models/faster_rcnn_aug/best.pt   # the better of the two Faster R-CNN runs on val
+  anomaly:                             # categories exported per model (others: pcb1 only)
+    efficientad: [cashew, candle, pcb1, macaroni2]
+    patchcore: [pcb1]
+    anomaly_dino: [pcb1]
+
+verify:
+  report: reports/onnx_verification.json
+  tf32: [false, true]                  # ORT CUDA `use_tf32` settings compared
+  # Pass criterion for the strict (TF32 off) ORT run, fixed before the measurement: max abs
+  # difference of D-FINE logits and boxes <= raw_atol; anomaly image scores within score_rtol.
+  raw_atol: 1.0e-3
+  score_rtol: 1.0e-3
+  top_k: 100
+  raw_dir: outputs/onnx_verify          # raw D-FINE outputs per split and variant (git-ignored)
+  dfine_splits: [val, test]            # NEU-DET splits scored (val decides, test is reported)
+  bootstrap: 150                       # paired image-bootstrap resamples (0.9 s each, 3 variants)
+  bootstrap_seed: 0
+  anomaly_split: threshold_calibration # the selection split of VisA (check_split: selection)
+  category_for_detail: pcb1
+
+benchmark:
+  report: reports/benchmark.json
+  providers: cuda                      # cuda | cpu (comma list allowed)
+  batch: 1
+  warmup: 50
+  runs: 500
+  tf32: [false, true]                  # ORT CUDA variants
+  torch_variants: [fp32, fp32_strict, fp16_amp]   # PyTorch eager on CUDA (fp32 = cuDNN TF32 default)
+  category: pcb1                       # the VisA category timed for the anomaly models
+  gpu_poll_ms: 20                      # sampling period of the device memory reading

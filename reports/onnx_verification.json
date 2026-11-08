@@ -1,0 +1,442 @@
+{
+ "environment": {
+  "torch": "2.14.1+cu130",
+  "onnxruntime": "1.31.1",
+  "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU",
+  "git_commit": "5958a573a80e9a812cf8e1cc2abe730744f09a55+dirty"
+ },
+ "models": {
+  "efficientad/cashew": {
+   "model": "efficientad",
+   "category": "cashew",
+   "split": "threshold_calibration",
+   "n_images": 75,
+   "variants": {
+    "ort_tf32_off": {
+     "max_abs": 5.7220458984375e-06,
+     "mean_abs": 7.386257251103719e-07,
+     "max_rel": 2.0692329950819753e-05,
+     "spearman": 0.9999999999999999,
+     "auroc_ref": 0.9312,
+     "auroc_got": 0.9312,
+     "max_map_abs": 1.7881393432617188e-05
+    },
+    "ort_tf32_on": {
+     "max_abs": 0.008190155029296875,
+     "mean_abs": 0.0006528391689062118,
+     "max_rel": 0.006045701279106888,
+     "spearman": 0.9999999999999999,
+     "auroc_ref": 0.9312,
+     "auroc_got": 0.9312,
+     "max_map_abs": 0.012701034545898438
+    }
+   }
+  },
+  "efficientad/candle": {
+   "model": "efficientad",
+   "category": "candle",
+   "split": "threshold_calibration",
+   "n_images": 100,
+   "variants": {
+    "ort_tf32_off": {
+     "max_abs": 9.5367431640625e-06,
+     "mean_abs": 1.367628574371338e-06,
+     "max_rel": 9.323644641091209e-05,
+     "spearman": 0.9999999999999999,
+     "auroc_ref": 0.9104,
+     "auroc_got": 0.9104,
+     "max_map_abs": 1.4543533325195312e-05
+    },
+    "ort_tf32_on": {
+     "max_abs": 0.004157304763793945,
+     "mean_abs": 0.00042534790933132174,
+     "max_rel": 0.008312036197965597,
+     "spearman": 0.9999759975997599,
+     "auroc_ref": 0.9104,
+     "auroc_got": 0.9104,
+     "max_map_abs": 0.004202604293823242
+    }
+   }
+  },
+  "efficientad/pcb1": {
+   "model": "efficientad",
+   "category": "pcb1",
+   "split": "threshold_calibration",
+   "n_images": 100,
+   "variants": {
+    "ort_tf32_off": {
+     "max_abs": 2.9802322387695312e-06,
+     "mean_abs": 5.262903869152069e-07,
+     "max_rel": 2.0584925560988232e-05,
+     "spearman": 0.9999999999999999,
+     "auroc_ref": 0.972,
+     "auroc_got": 0.972,
+     "max_map_abs": 9.119510650634766e-06
+    },
+    "ort_tf32_on": {
+     "max_abs": 0.0005195140838623047,
+     "mean_abs": 7.222292944788933e-05,
+     "max_rel": 0.0034720324364942074,
+     "spearman": 0.9999999999999999,
+     "auroc_ref": 0.972,
+     "auroc_got": 0.972,
+     "max_map_abs": 0.0014392733573913574
+    }
+   }
+  },
+  "efficientad/macaroni2": {
+   "model": "efficientad",
+   "category": "macaroni2",
+   "split": "threshold_calibration",
+   "n_images": 100,
+   "variants": {
+    "ort_tf32_off": {
+     "max_abs": 2.86102294921875e-06,
+     "mean_abs": 2.418830990791321e-07,
+     "max_rel": 6.140571839417639e-06,
+     "spearman": 0.9999999999999999,
+     "auroc_ref": 0.8268,
+     "auroc_got": 0.8268,
+     "max_map_abs": 7.62939453125e-06
+    },
+    "ort_tf32_on": {
+     "max_abs": 0.00679779052734375,
+     "mean_abs": 0.00038238923996686936,
+     "max_rel": 0.004429723670169339,
+     "spearman": 0.9999999999999999,
+     "auroc_ref": 0.8268,
+     "auroc_got": 0.8268,
+     "max_map_abs": 0.0072479248046875
+    }
+   }
+  },
+  "dfine_s": {
+   "splits": {
+    "val": {
+     "purpose": "selection",
+     "n_images": 270,
+     "variants": {
+      "torch_fp32_strict": {
+       "metrics": {
+        "map50": 0.7103333998117557,
+        "map50_95": 0.4345099122931661,
+        "recall": 0.6656580937972768,
+        "precision": 0.7470288624787776,
+        "fp_per_image": 0.5518518518518518,
+        "recall_max": 0.9848714069591528
+       },
+       "raw": {
+        "logits_max_abs": 0.0,
+        "boxes_max_abs": 0.0,
+        "images_within_atol": 270.0,
+        "n_images": 270.0,
+        "sorted_prob_max_abs": 0.0,
+        "top10_overlap": 1.0,
+        "top100_overlap": 1.0
+       }
+      },
+      "torch_fp32_default": {
+       "metrics": {
+        "map50": 0.7101664696619613,
+        "map50_95": 0.434630309770105,
+        "recall": 0.6641452344931922,
+        "precision": 0.7440677966101695,
+        "fp_per_image": 0.5592592592592592,
+        "recall_max": 0.9848714069591528
+       },
+       "raw": {
+        "logits_max_abs": 5.6429362297058105,
+        "boxes_max_abs": 2.1730339527130127,
+        "images_within_atol": 0.0,
+        "n_images": 270.0,
+        "sorted_prob_max_abs": 0.20282338809482403,
+        "top10_overlap": 0.835925925925926,
+        "top100_overlap": 0.7112592592592593
+       }
+      },
+      "torch_amp": {
+       "metrics": {
+        "map50": 0.710859090270329,
+        "map50_95": 0.43452726595839447,
+        "recall": 0.6641452344931922,
+        "precision": 0.7491467576791809,
+        "fp_per_image": 0.5444444444444444,
+        "recall_max": 0.983358547655068
+       },
+       "raw": {
+        "logits_max_abs": 5.6128411293029785,
+        "boxes_max_abs": 2.3045992851257324,
+        "images_within_atol": 0.0,
+        "n_images": 270.0,
+        "sorted_prob_max_abs": 0.20559281820889552,
+        "top10_overlap": 0.7377777777777779,
+        "top100_overlap": 0.5976296296296297
+       }
+      },
+      "ort_tf32_off": {
+       "metrics": {
+        "map50": 0.7103330276897816,
+        "map50_95": 0.43450968626091946,
+        "recall": 0.6656580937972768,
+        "precision": 0.7470288624787776,
+        "fp_per_image": 0.5518518518518518,
+        "recall_max": 0.9848714069591528
+       },
+       "raw": {
+        "logits_max_abs": 3.1071958541870117,
+        "boxes_max_abs": 0.8170124292373657,
+        "images_within_atol": 233.0,
+        "n_images": 270.0,
+        "sorted_prob_max_abs": 0.00043961929071512085,
+        "top10_overlap": 1.0,
+        "top100_overlap": 0.9998148148148148
+       }
+      },
+      "ort_tf32_on": {
+       "metrics": {
+        "map50": 0.7103277805470416,
+        "map50_95": 0.4344669584488277,
+        "recall": 0.6641452344931922,
+        "precision": 0.7453310696095077,
+        "fp_per_image": 0.5555555555555556,
+        "recall_max": 0.9848714069591528
+       },
+       "raw": {
+        "logits_max_abs": 5.646297931671143,
+        "boxes_max_abs": 2.194854974746704,
+        "images_within_atol": 0.0,
+        "n_images": 270.0,
+        "sorted_prob_max_abs": 0.20234687782296745,
+        "top10_overlap": 0.8303703703703704,
+        "top100_overlap": 0.7118518518518518
+       }
+      }
+     },
+     "bootstrap_95": {
+      "ort_tf32_on_minus_ort_tf32_off": {
+       "map50": [
+        -5.24714273997251e-06,
+        -0.000995211582932229,
+        0.0008250965690806078
+       ],
+       "map50_95": [
+        -4.2727812091747364e-05,
+        -0.0013266146979049778,
+        0.0009104433244512074
+       ]
+      }
+     },
+     "seconds": 232.61574313899837
+    },
+    "test": {
+     "purpose": "evaluation",
+     "n_images": 270,
+     "variants": {
+      "torch_fp32_strict": {
+       "metrics": {
+        "map50": 0.7308420859751569,
+        "map50_95": 0.4447412908884134,
+        "recall": 0.6926751592356688,
+        "precision": 0.7347972972972973,
+        "fp_per_image": 0.5814814814814815,
+        "recall_max": 0.9936305732484076
+       },
+       "raw": {
+        "logits_max_abs": 0.0,
+        "boxes_max_abs": 0.0,
+        "images_within_atol": 270.0,
+        "n_images": 270.0,
+        "sorted_prob_max_abs": 0.0,
+        "top10_overlap": 1.0,
+        "top100_overlap": 1.0
+       }
+      },
+      "torch_fp32_default": {
+       "metrics": {
+        "map50": 0.7308917158114444,
+        "map50_95": 0.4445008558982315,
+        "recall": 0.6926751592356688,
+        "precision": 0.7360406091370558,
+        "fp_per_image": 0.5777777777777777,
+        "recall_max": 0.9936305732484076
+       },
+       "raw": {
+        "logits_max_abs": 5.154496669769287,
+        "boxes_max_abs": 2.4481778144836426,
+        "images_within_atol": 0.0,
+        "n_images": 270.0,
+        "sorted_prob_max_abs": 0.10039028264366345,
+        "top10_overlap": 0.8496296296296297,
+        "top100_overlap": 0.7063703703703704
+       }
+      },
+      "torch_amp": {
+       "metrics": {
+        "map50": 0.7304119950005782,
+        "map50_95": 0.4444747435171741,
+        "recall": 0.6926751592356688,
+        "precision": 0.7410562180579217,
+        "fp_per_image": 0.562962962962963,
+        "recall_max": 0.9936305732484076
+       },
+       "raw": {
+        "logits_max_abs": 4.942807197570801,
+        "boxes_max_abs": 2.4503071308135986,
+        "images_within_atol": 0.0,
+        "n_images": 270.0,
+        "sorted_prob_max_abs": 0.14669524520548066,
+        "top10_overlap": 0.7566666666666667,
+        "top100_overlap": 0.584111111111111
+       }
+      },
+      "ort_tf32_off": {
+       "metrics": {
+        "map50": 0.7308420425600257,
+        "map50_95": 0.44472167933338996,
+        "recall": 0.6926751592356688,
+        "precision": 0.7347972972972973,
+        "fp_per_image": 0.5814814814814815,
+        "recall_max": 0.9936305732484076
+       },
+       "raw": {
+        "logits_max_abs": 2.3781704902648926,
+        "boxes_max_abs": 0.7819057106971741,
+        "images_within_atol": 234.0,
+        "n_images": 270.0,
+        "sorted_prob_max_abs": 0.001165090855276607,
+        "top10_overlap": 1.0,
+        "top100_overlap": 0.9995555555555555
+       }
+      },
+      "ort_tf32_on": {
+       "metrics": {
+        "map50": 0.7309642425638061,
+        "map50_95": 0.44479096028659787,
+        "recall": 0.6926751592356688,
+        "precision": 0.7360406091370558,
+        "fp_per_image": 0.5777777777777777,
+        "recall_max": 0.9936305732484076
+       },
+       "raw": {
+        "logits_max_abs": 4.914308547973633,
+        "boxes_max_abs": 2.4469003677368164,
+        "images_within_atol": 0.0,
+        "n_images": 270.0,
+        "sorted_prob_max_abs": 0.09877313740576721,
+        "top10_overlap": 0.8470370370370371,
+        "top100_overlap": 0.7077037037037036
+       }
+      }
+     },
+     "bootstrap_95": {
+      "ort_tf32_on_minus_ort_tf32_off": {
+       "map50": [
+        0.00012220000378038165,
+        -0.0007636791631650764,
+        0.0016352761547774681
+       ],
+       "map50_95": [
+        6.928095320790639e-05,
+        -0.0008179226625884814,
+        0.0010555225218584672
+       ]
+      }
+     },
+     "seconds": 232.27898039999855
+    }
+   },
+   "tolerance": 0.001
+  },
+  "faster_rcnn": {
+   "split": "val",
+   "n_images": 270,
+   "variants": {
+    "torch_fp32_strict": {
+     "metrics": {
+      "map50": 0.7472955427397164,
+      "map50_95": 0.3990746616690859,
+      "recall": 0.7987897125567323,
+      "precision": 0.5557894736842105,
+      "fp_per_image": 1.5629629629629629,
+      "recall_max": 0.9773071104387292
+     },
+     "mean_detections": 42.992592592592594
+    },
+    "ort_tf32_off": {
+     "metrics": {
+      "map50": 0.7472961905136929,
+      "map50_95": 0.3990740220177387,
+      "recall": 0.7987897125567323,
+      "precision": 0.5557894736842105,
+      "fp_per_image": 1.5629629629629629,
+      "recall_max": 0.9773071104387292
+     },
+     "mean_detections": 42.992592592592594
+    },
+    "ort_tf32_on": {
+     "metrics": {
+      "map50": 0.7489993430359881,
+      "map50_95": 0.39848954717352747,
+      "recall": 0.800302571860817,
+      "precision": 0.5580168776371308,
+      "fp_per_image": 1.5518518518518518,
+      "recall_max": 0.9788199697428139
+     },
+     "mean_detections": 43.00370370370371
+    }
+   }
+  },
+  "patchcore/pcb1": {
+   "model": "patchcore",
+   "category": "pcb1",
+   "split": "threshold_calibration",
+   "n_images": 100,
+   "variants": {
+    "ort_tf32_off": {
+     "max_abs": 7.62939453125e-05,
+     "mean_abs": 1.45721435546875e-05,
+     "max_rel": 2.3334192420517614e-06,
+     "spearman": 0.9999999999999999,
+     "auroc_ref": 0.9192,
+     "auroc_got": 0.9192,
+     "max_map_abs": 9.5367431640625e-05
+    },
+    "ort_tf32_on": {
+     "max_abs": 0.10969924926757812,
+     "mean_abs": 0.016020469665527344,
+     "max_rel": 0.003412060971679787,
+     "spearman": 0.9999279927992797,
+     "auroc_ref": 0.9192,
+     "auroc_got": 0.9184,
+     "max_map_abs": 0.44411468505859375
+    }
+   }
+  },
+  "anomaly_dino/pcb1": {
+   "model": "anomaly_dino",
+   "category": "pcb1",
+   "split": "threshold_calibration",
+   "n_images": 100,
+   "variants": {
+    "ort_tf32_off": {
+     "max_abs": 7.674098014831543e-07,
+     "mean_abs": 2.061203122138977e-07,
+     "max_rel": 1.0998369308443868e-05,
+     "spearman": 0.9999999999999999,
+     "auroc_ref": 0.9304,
+     "auroc_got": 0.9304,
+     "max_map_abs": 4.030764102935791e-06
+    },
+    "ort_tf32_on": {
+     "max_abs": 0.0004476606845855713,
+     "mean_abs": 8.311398327350617e-05,
+     "max_rel": 0.0038466022183200493,
+     "spearman": 0.99996399639964,
+     "auroc_ref": 0.9304,
+     "auroc_got": 0.9308,
+     "max_map_abs": 0.00106009840965271
+    }
+   }
+  }
+ }
+}

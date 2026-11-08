@@ -1,0 +1,776 @@
+{
+ "environment": {
+  "torch": "2.14.1+cu130",
+  "onnxruntime": "1.31.1",
+  "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU",
+  "git_commit": "5958a573a80e9a812cf8e1cc2abe730744f09a55+dirty",
+  "platform": "WSL2 Ubuntu",
+  "protocol": {
+   "batch": 1,
+   "warmup": 50,
+   "runs": 500
+  }
+ },
+ "rows": [
+  {
+   "model": "dfine_s",
+   "category": null,
+   "variant": "ort_cuda_tf32_off",
+   "batch": 1,
+   "warmup": 50,
+   "runs": 500,
+   "latency": {
+    "n": 500.0,
+    "mean_ms": 31.24165879400607,
+    "p50_ms": 30.89129449926986,
+    "p95_ms": 35.10709144966313,
+    "min_ms": 27.55885000078706,
+    "max_ms": 44.35629200088442,
+    "std_ms": 2.1228898618647687,
+    "throughput_per_s": 32.008543675403594
+   },
+   "peak_ram_mib": 2004.6796875,
+   "device_baseline_mib": 824.0,
+   "device_peak_mib": 1383.5,
+   "device_used_by_variant_mib": 559.5,
+   "input_shape": [
+    1,
+    3,
+    640,
+    640
+   ],
+   "load_seconds": 0.4521235219999653,
+   "providers": [
+    "CUDAExecutionProvider",
+    "CPUExecutionProvider"
+   ]
+  },
+  {
+   "model": "dfine_s",
+   "category": null,
+   "variant": "ort_cuda_tf32_on",
+   "batch": 1,
+   "warmup": 50,
+   "runs": 500,
+   "latency": {
+    "n": 500.0,
+    "mean_ms": 29.27927898798589,
+    "p50_ms": 28.865901999779453,
+    "p95_ms": 33.691130399893154,
+    "min_ms": 25.209811001332127,
+    "max_ms": 42.116431999602355,
+    "std_ms": 2.341882993671584,
+    "throughput_per_s": 34.153846493635584
+   },
+   "peak_ram_mib": 2019.875,
+   "device_baseline_mib": 811.0,
+   "device_peak_mib": 1383.5,
+   "device_used_by_variant_mib": 572.5,
+   "input_shape": [
+    1,
+    3,
+    640,
+    640
+   ],
+   "load_seconds": 0.5025975919998018,
+   "providers": [
+    "CUDAExecutionProvider",
+    "CPUExecutionProvider"
+   ]
+  },
+  {
+   "model": "dfine_s",
+   "category": null,
+   "variant": "torch_fp32",
+   "batch": 1,
+   "warmup": 50,
+   "runs": 500,
+   "latency": {
+    "n": 500.0,
+    "mean_ms": 28.556872866003687,
+    "p50_ms": 28.253980000044976,
+    "p95_ms": 31.384311199144577,
+    "min_ms": 25.80578500055708,
+    "max_ms": 42.56435900060751,
+    "std_ms": 1.7373486211251061,
+    "throughput_per_s": 35.017839827640145
+   },
+   "peak_ram_mib": 2013.94921875,
+   "device_baseline_mib": 840.0,
+   "device_peak_mib": 1299.5,
+   "device_used_by_variant_mib": 459.5,
+   "input_shape": [
+    1,
+    3,
+    640,
+    640
+   ],
+   "cudnn_allow_tf32": true
+  },
+  {
+   "model": "dfine_s",
+   "category": null,
+   "variant": "torch_fp32_strict",
+   "batch": 1,
+   "warmup": 50,
+   "runs": 500,
+   "latency": {
+    "n": 500.0,
+    "mean_ms": 27.603470003992697,
+    "p50_ms": 27.4495300000126,
+    "p95_ms": 29.67394530051024,
+    "min_ms": 25.058983001144952,
+    "max_ms": 35.99020599904179,
+    "std_ms": 1.2467264709071415,
+    "throughput_per_s": 36.22732938486919
+   },
+   "peak_ram_mib": 2004.734375,
+   "device_baseline_mib": 844.0,
+   "device_peak_mib": 1299.5,
+   "device_used_by_variant_mib": 455.5,
+   "input_shape": [
+    1,
+    3,
+    640,
+    640
+   ],
+   "cudnn_allow_tf32": false
+  },
+  {
+   "model": "dfine_s",
+   "category": null,
+   "variant": "torch_fp16_amp",
+   "batch": 1,
+   "warmup": 50,
+   "runs": 500,
+   "latency": {
+    "n": 500.0,
+    "mean_ms": 37.12615056802679,
+    "p50_ms": 36.70076999969751,
+    "p95_ms": 40.58975690022635,
+    "min_ms": 33.803623999119736,
+    "max_ms": 59.901263999563525,
+    "std_ms": 2.266976081294776,
+    "throughput_per_s": 26.935192167787108
+   },
+   "peak_ram_mib": 2234.68359375,
+   "device_baseline_mib": 855.0,
+   "device_peak_mib": 1279.5,
+   "device_used_by_variant_mib": 424.5,
+   "input_shape": [
+    1,
+    3,
+    640,
+    640
+   ],
+   "cudnn_allow_tf32": true
+  },
+  {
+   "model": "efficientad",
+   "category": "pcb1",
+   "variant": "ort_cuda_tf32_off",
+   "batch": 1,
+   "warmup": 50,
+   "runs": 500,
+   "latency": {
+    "n": 500.0,
+    "mean_ms": 13.063068227973417,
+    "p50_ms": 12.951439500284323,
+    "p95_ms": 13.669355948695738,
+    "min_ms": 12.439896001524176,
+    "max_ms": 14.242265999200754,
+    "std_ms": 0.32543905446896976,
+    "throughput_per_s": 76.55169387070853
+   },
+   "peak_ram_mib": 1814.0546875,
+   "device_baseline_mib": 818.0,
+   "device_peak_mib": 1459.5,
+   "device_used_by_variant_mib": 641.5,
+   "input_shape": [
+    1,
+    3,
+    256,
+    256
+   ],
+   "load_seconds": 0.3475798660001601,
+   "providers": [
+    "CUDAExecutionProvider",
+    "CPUExecutionProvider"
+   ]
+  },
+  {
+   "model": "efficientad",
+   "category": "pcb1",
+   "variant": "ort_cuda_tf32_on",
+   "batch": 1,
+   "warmup": 50,
+   "runs": 500,
+   "latency": {
+    "n": 500.0,
+    "mean_ms": 9.114479320025566,
+    "p50_ms": 9.030789499774983,
+    "p95_ms": 9.658028251578799,
+    "min_ms": 8.734570999877178,
+    "max_ms": 10.44013799946697,
+    "std_ms": 0.28442173515117636,
+    "throughput_per_s": 109.71553776010926
+   },
+   "peak_ram_mib": 1806.875,
+   "device_baseline_mib": 889.0,
+   "device_peak_mib": 1463.5,
+   "device_used_by_variant_mib": 574.5,
+   "input_shape": [
+    1,
+    3,
+    256,
+    256
+   ],
+   "load_seconds": 0.20120264000070165,
+   "providers": [
+    "CUDAExecutionProvider",
+    "CPUExecutionProvider"
+   ]
+  },
+  {
+   "model": "efficientad",
+   "category": "pcb1",
+   "variant": "torch_fp32",
+   "batch": 1,
+   "warmup": 50,
+   "runs": 500,
+   "latency": {
+    "n": 500.0,
+    "mean_ms": 10.837803942089522,
+    "p50_ms": 10.691536500416987,
+    "p95_ms": 11.722978149100527,
+    "min_ms": 10.164855000766693,
+    "max_ms": 13.822368000546703,
+    "std_ms": 0.4877362004135769,
+    "throughput_per_s": 92.26961526000817
+   },
+   "peak_ram_mib": 1656.8046875,
+   "device_baseline_mib": 812.0,
+   "device_peak_mib": 1247.5,
+   "device_used_by_variant_mib": 435.5,
+   "input_shape": [
+    1,
+    3,
+    256,
+    256
+   ],
+   "cudnn_allow_tf32": true
+  },
+  {
+   "model": "efficientad",
+   "category": "pcb1",
+   "variant": "torch_fp32_strict",
+   "batch": 1,
+   "warmup": 50,
+   "runs": 500,
+   "latency": {
+    "n": 500.0,
+    "mean_ms": 13.8641770160757,
+    "p50_ms": 13.767593000011402,
+    "p95_ms": 14.640449600938155,
+    "min_ms": 13.22418000017933,
+    "max_ms": 15.662015000998508,
+    "std_ms": 0.3767786580927149,
+    "throughput_per_s": 72.12833468878004
+   },
+   "peak_ram_mib": 1764.296875,
+   "device_baseline_mib": 822.0,
+   "device_peak_mib": 1283.5,
+   "device_used_by_variant_mib": 461.5,
+   "input_shape": [
+    1,
+    3,
+    256,
+    256
+   ],
+   "cudnn_allow_tf32": false
+  },
+  {
+   "model": "efficientad",
+   "category": "pcb1",
+   "variant": "torch_fp16_amp",
+   "batch": 1,
+   "warmup": 50,
+   "runs": 500,
+   "latency": {
+    "n": 500.0,
+    "mean_ms": 8.571296690013696,
+    "p50_ms": 8.429002500633942,
+    "p95_ms": 9.590974899947467,
+    "min_ms": 7.900725000581588,
+    "max_ms": 11.38559399987571,
+    "std_ms": 0.519176777951351,
+    "throughput_per_s": 116.66846174687743
+   },
+   "peak_ram_mib": 1666.64453125,
+   "device_baseline_mib": 815.0,
+   "device_peak_mib": 1221.5,
+   "device_used_by_variant_mib": 406.5,
+   "input_shape": [
+    1,
+    3,
+    256,
+    256
+   ],
+   "cudnn_allow_tf32": true
+  },
+  {
+   "model": "faster_rcnn",
+   "category": null,
+   "variant": "ort_cuda_tf32_off",
+   "batch": 1,
+   "warmup": 50,
+   "runs": 500,
+   "latency": {
+    "n": 500.0,
+    "mean_ms": 77.32064642993282,
+    "p50_ms": 77.00738099993032,
+    "p95_ms": 79.6002721498553,
+    "min_ms": 74.91785799902573,
+    "max_ms": 83.64965799955826,
+    "std_ms": 1.2706218033884864,
+    "throughput_per_s": 12.933156228927674
+   },
+   "peak_ram_mib": 1938.3515625,
+   "device_baseline_mib": 842.0,
+   "device_peak_mib": 2173.5,
+   "device_used_by_variant_mib": 1331.5,
+   "input_shape": [
+    3,
+    480,
+    480
+   ],
+   "load_seconds": 0.4721303610003815,
+   "providers": [
+    "CUDAExecutionProvider",
+    "CPUExecutionProvider"
+   ]
+  },
+  {
+   "model": "faster_rcnn",
+   "category": null,
+   "variant": "ort_cuda_tf32_on",
+   "batch": 1,
+   "warmup": 50,
+   "runs": 500,
+   "latency": {
+    "n": 500.0,
+    "mean_ms": 46.23373623603402,
+    "p50_ms": 45.94242750135891,
+    "p95_ms": 48.52160344898948,
+    "min_ms": 44.38079700048547,
+    "max_ms": 54.700017000868684,
+    "std_ms": 1.308427728004696,
+    "throughput_per_s": 21.629227516780528
+   },
+   "peak_ram_mib": 1891.15234375,
+   "device_baseline_mib": 903.0,
+   "device_peak_mib": 2181.5,
+   "device_used_by_variant_mib": 1278.5,
+   "input_shape": [
+    3,
+    480,
+    480
+   ],
+   "load_seconds": 0.4716395880004711,
+   "providers": [
+    "CUDAExecutionProvider",
+    "CPUExecutionProvider"
+   ]
+  },
+  {
+   "model": "faster_rcnn",
+   "category": null,
+   "variant": "torch_fp32",
+   "batch": 1,
+   "warmup": 50,
+   "runs": 500,
+   "latency": {
+    "n": 500.0,
+    "mean_ms": 48.14506408602756,
+    "p50_ms": 47.2668189995602,
+    "p95_ms": 53.197249899767485,
+    "min_ms": 44.94314499970642,
+    "max_ms": 60.16916999942623,
+    "std_ms": 2.4779679266671124,
+    "throughput_per_s": 20.770561198405705
+   },
+   "peak_ram_mib": 1832.0234375,
+   "device_baseline_mib": 888.0,
+   "device_peak_mib": 1711.5,
+   "device_used_by_variant_mib": 823.5,
+   "input_shape": [
+    3,
+    480,
+    480
+   ],
+   "cudnn_allow_tf32": true
+  },
+  {
+   "model": "faster_rcnn",
+   "category": null,
+   "variant": "torch_fp32_strict",
+   "batch": 1,
+   "warmup": 50,
+   "runs": 500,
+   "latency": {
+    "n": 500.0,
+    "mean_ms": 77.64168175803934,
+    "p50_ms": 77.56196599984833,
+    "p95_ms": 79.3019853509577,
+    "min_ms": 75.45923800171295,
+    "max_ms": 82.187072999659,
+    "std_ms": 0.9712293445641049,
+    "throughput_per_s": 12.879679797719682
+   },
+   "peak_ram_mib": 1888.703125,
+   "device_baseline_mib": 866.0,
+   "device_peak_mib": 1667.5,
+   "device_used_by_variant_mib": 801.5,
+   "input_shape": [
+    3,
+    480,
+    480
+   ],
+   "cudnn_allow_tf32": false
+  },
+  {
+   "model": "faster_rcnn",
+   "category": null,
+   "variant": "torch_fp16_amp",
+   "batch": 1,
+   "warmup": 50,
+   "runs": 500,
+   "latency": {
+    "n": 500.0,
+    "mean_ms": 34.78841092600851,
+    "p50_ms": 34.51408650016674,
+    "p95_ms": 37.29372455072735,
+    "min_ms": 32.84231799989357,
+    "max_ms": 41.901370999767096,
+    "std_ms": 1.2919019991949696,
+    "throughput_per_s": 28.745204893862514
+   },
+   "peak_ram_mib": 2000.8984375,
+   "device_baseline_mib": 874.0,
+   "device_peak_mib": 1607.5,
+   "device_used_by_variant_mib": 733.5,
+   "input_shape": [
+    3,
+    480,
+    480
+   ],
+   "cudnn_allow_tf32": true
+  },
+  {
+   "model": "patchcore",
+   "category": "pcb1",
+   "variant": "ort_cuda_tf32_off",
+   "batch": 1,
+   "warmup": 50,
+   "runs": 500,
+   "latency": {
+    "n": 500.0,
+    "mean_ms": 10.610125465987949,
+    "p50_ms": 10.437970498969662,
+    "p95_ms": 12.232096849766094,
+    "min_ms": 9.813094000492129,
+    "max_ms": 13.347920001251623,
+    "std_ms": 0.6261472258445776,
+    "throughput_per_s": 94.24959235455056
+   },
+   "peak_ram_mib": 1844.4375,
+   "device_baseline_mib": 859.0,
+   "device_peak_mib": 1819.5,
+   "device_used_by_variant_mib": 960.5,
+   "input_shape": [
+    1,
+    3,
+    224,
+    224
+   ],
+   "load_seconds": 0.8418673750002199,
+   "providers": [
+    "CUDAExecutionProvider",
+    "CPUExecutionProvider"
+   ]
+  },
+  {
+   "model": "patchcore",
+   "category": "pcb1",
+   "variant": "ort_cuda_tf32_on",
+   "batch": 1,
+   "warmup": 50,
+   "runs": 500,
+   "latency": {
+    "n": 500.0,
+    "mean_ms": 9.390296717981983,
+    "p50_ms": 9.197417500217853,
+    "p95_ms": 10.73987245108583,
+    "min_ms": 8.478693000142812,
+    "max_ms": 12.568109999847366,
+    "std_ms": 0.6201588499372065,
+    "throughput_per_s": 106.49290752283113
+   },
+   "peak_ram_mib": 1831.19140625,
+   "device_baseline_mib": 877.0,
+   "device_peak_mib": 1789.5,
+   "device_used_by_variant_mib": 912.5,
+   "input_shape": [
+    1,
+    3,
+    224,
+    224
+   ],
+   "load_seconds": 0.47783675500068057,
+   "providers": [
+    "CUDAExecutionProvider",
+    "CPUExecutionProvider"
+   ]
+  },
+  {
+   "model": "patchcore",
+   "category": "pcb1",
+   "variant": "torch_fp32",
+   "batch": 1,
+   "warmup": 50,
+   "runs": 500,
+   "latency": {
+    "n": 500.0,
+    "mean_ms": 11.382826144024875,
+    "p50_ms": 11.237908500334015,
+    "p95_ms": 12.546398001450143,
+    "min_ms": 10.3935699989961,
+    "max_ms": 15.19662400096422,
+    "std_ms": 0.6796785392684046,
+    "throughput_per_s": 87.85164486808266
+   },
+   "peak_ram_mib": 1794.60546875,
+   "device_baseline_mib": 879.0,
+   "device_peak_mib": 1331.5,
+   "device_used_by_variant_mib": 452.5,
+   "input_shape": [
+    1,
+    3,
+    224,
+    224
+   ],
+   "cudnn_allow_tf32": true
+  },
+  {
+   "model": "patchcore",
+   "category": "pcb1",
+   "variant": "torch_fp32_strict",
+   "batch": 1,
+   "warmup": 50,
+   "runs": 500,
+   "latency": {
+    "n": 500.0,
+    "mean_ms": 10.978127569927892,
+    "p50_ms": 10.877921999053797,
+    "p95_ms": 11.775157200008833,
+    "min_ms": 10.365354999521514,
+    "max_ms": 15.188534000117215,
+    "std_ms": 0.4812831986846881,
+    "throughput_per_s": 91.09021494150558
+   },
+   "peak_ram_mib": 1814.3671875,
+   "device_baseline_mib": 876.0,
+   "device_peak_mib": 1357.5,
+   "device_used_by_variant_mib": 481.5,
+   "input_shape": [
+    1,
+    3,
+    224,
+    224
+   ],
+   "cudnn_allow_tf32": false
+  },
+  {
+   "model": "patchcore",
+   "category": "pcb1",
+   "variant": "torch_fp16_amp",
+   "batch": 1,
+   "warmup": 50,
+   "runs": 500,
+   "latency": {
+    "n": 500.0,
+    "mean_ms": 14.889879874030157,
+    "p50_ms": 14.769086998967396,
+    "p95_ms": 15.988924400699034,
+    "min_ms": 13.728854999499163,
+    "max_ms": 19.48148500014213,
+    "std_ms": 0.6505984133320923,
+    "throughput_per_s": 67.15970904131517
+   },
+   "peak_ram_mib": 2009.84765625,
+   "device_baseline_mib": 868.0,
+   "device_peak_mib": 1393.5,
+   "device_used_by_variant_mib": 525.5,
+   "input_shape": [
+    1,
+    3,
+    224,
+    224
+   ],
+   "cudnn_allow_tf32": true
+  },
+  {
+   "model": "anomaly_dino",
+   "category": "pcb1",
+   "variant": "ort_cuda_tf32_off",
+   "batch": 1,
+   "warmup": 50,
+   "runs": 500,
+   "latency": {
+    "n": 500.0,
+    "mean_ms": 28.85089772403444,
+    "p50_ms": 28.709772000183875,
+    "p95_ms": 30.53377769947474,
+    "min_ms": 27.176446999874315,
+    "max_ms": 34.52749499956553,
+    "std_ms": 0.9451273449285427,
+    "throughput_per_s": 34.66096651706415
+   },
+   "peak_ram_mib": 2672.5390625,
+   "device_baseline_mib": 865.0,
+   "device_peak_mib": 5825.5,
+   "device_used_by_variant_mib": 4960.5,
+   "input_shape": [
+    1,
+    3,
+    252,
+    252
+   ],
+   "load_seconds": 5.265731847999632,
+   "providers": [
+    "CUDAExecutionProvider",
+    "CPUExecutionProvider"
+   ]
+  },
+  {
+   "model": "anomaly_dino",
+   "category": "pcb1",
+   "variant": "ort_cuda_tf32_on",
+   "batch": 1,
+   "warmup": 50,
+   "runs": 500,
+   "latency": {
+    "n": 500.0,
+    "mean_ms": 23.60932593599864,
+    "p50_ms": 23.20759750000434,
+    "p95_ms": 25.890390749827926,
+    "min_ms": 22.095627000453533,
+    "max_ms": 36.200907999955234,
+    "std_ms": 1.299814456969785,
+    "throughput_per_s": 42.35614361506342
+   },
+   "peak_ram_mib": 2673.25390625,
+   "device_baseline_mib": 882.0,
+   "device_peak_mib": 5823.5,
+   "device_used_by_variant_mib": 4941.5,
+   "input_shape": [
+    1,
+    3,
+    252,
+    252
+   ],
+   "load_seconds": 2.9123289130002377,
+   "providers": [
+    "CUDAExecutionProvider",
+    "CPUExecutionProvider"
+   ]
+  },
+  {
+   "model": "anomaly_dino",
+   "category": "pcb1",
+   "variant": "torch_fp32",
+   "batch": 1,
+   "warmup": 50,
+   "runs": 500,
+   "latency": {
+    "n": 500.0,
+    "mean_ms": 36.90504486603459,
+    "p50_ms": 36.64357099933113,
+    "p95_ms": 39.11841925037152,
+    "min_ms": 35.03880600146658,
+    "max_ms": 48.266350000631064,
+    "std_ms": 1.3292058025972275,
+    "throughput_per_s": 27.096566435022712
+   },
+   "peak_ram_mib": 1721.39453125,
+   "device_baseline_mib": 827.0,
+   "device_peak_mib": 2749.5,
+   "device_used_by_variant_mib": 1922.5,
+   "input_shape": [
+    1,
+    3,
+    252,
+    252
+   ],
+   "cudnn_allow_tf32": true
+  },
+  {
+   "model": "anomaly_dino",
+   "category": "pcb1",
+   "variant": "torch_fp32_strict",
+   "batch": 1,
+   "warmup": 50,
+   "runs": 500,
+   "latency": {
+    "n": 500.0,
+    "mean_ms": 36.52536497601977,
+    "p50_ms": 36.4451334999103,
+    "p95_ms": 37.63672634931936,
+    "min_ms": 35.20551299880026,
+    "max_ms": 42.44576000019151,
+    "std_ms": 0.7179957753402193,
+    "throughput_per_s": 27.378234294346854
+   },
+   "peak_ram_mib": 1721.9453125,
+   "device_baseline_mib": 899.0,
+   "device_peak_mib": 2749.5,
+   "device_used_by_variant_mib": 1850.5,
+   "input_shape": [
+    1,
+    3,
+    252,
+    252
+   ],
+   "cudnn_allow_tf32": false
+  },
+  {
+   "model": "anomaly_dino",
+   "category": "pcb1",
+   "variant": "torch_fp16_amp",
+   "batch": 1,
+   "warmup": 50,
+   "runs": 500,
+   "latency": {
+    "n": 500.0,
+    "mean_ms": 29.077791244017135,
+    "p50_ms": 29.006254000705667,
+    "p95_ms": 30.019027149864996,
+    "min_ms": 28.039388000252075,
+    "max_ms": 33.818662999692606,
+    "std_ms": 0.5270691276205832,
+    "throughput_per_s": 34.39050757356798
+   },
+   "peak_ram_mib": 1930.04296875,
+   "device_baseline_mib": 835.0,
+   "device_peak_mib": 2279.5,
+   "device_used_by_variant_mib": 1444.5,
+   "input_shape": [
+    1,
+    3,
+    252,
+    252
+   ],
+   "cudnn_allow_tf32": true
+  }
+ ]
+}

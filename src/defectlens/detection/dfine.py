@@ -143,6 +143,47 @@ def train_one_epoch(
     return total / max(n, 1)
 
 
+def decode(
+    logits: torch.Tensor,
+    pred_boxes: torch.Tensor,
+    size_hw: tuple[int, int],
+    *,
+    score_thresh: float = 0.001,
+    detections_per_img: int = 100,
+) -> list[tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
+    """Raw network outputs -> per image ``(xyxy pixels, scores, labels 1..K)`` in the input frame.
+
+    Takes the top ``detections_per_img`` (query, class) pairs by sigmoid score and drops scores
+    below ``score_thresh``. Shared by the PyTorch path (``predict``) and the ONNX Runtime path
+    (``export/verify.py``), so a difference between the two can only come from the network.
+    """
+    probs = logits.float().sigmoid()
+    _, n_q, n_c = probs.shape
+    scores, idx = probs.flatten(1).topk(min(detections_per_img, n_q * n_c), dim=1)
+    query, cls = idx // n_c, idx % n_c
+    cxcywh = pred_boxes.float().gather(1, query.unsqueeze(-1).expand(-1, -1, 4))
+    h, w = size_hw
+    xyxy = torch.cat([cxcywh[..., :2] - cxcywh[..., 2:] / 2,
+                      cxcywh[..., :2] + cxcywh[..., 2:] / 2], dim=-1)
+    xyxy = xyxy * torch.tensor([w, h, w, h], device=xyxy.device, dtype=xyxy.dtype)
+    out = []
+    for i in range(probs.shape[0]):
+        keep = scores[i] >= score_thresh
+        out.append((xyxy[i][keep], scores[i][keep], cls[i][keep] + 1))
+    return out
+
+
+def to_detections(
+    boxes: torch.Tensor, scores: torch.Tensor, labels: torch.Tensor, meta: dict[str, Any]
+) -> Detections:
+    """Map one image's decoded boxes back to the original image frame and clip them."""
+    arr = meta["affine"].invert(boxes.cpu().numpy().astype(np.float64))
+    oh, ow = meta["size"]
+    return Detections.of(
+        clip_boxes(arr, ow, oh), scores.cpu().numpy(), labels.cpu().numpy()
+    )
+
+
 @torch.no_grad()
 def predict(
     model: DFineForObjectDetection,
@@ -163,25 +204,9 @@ def predict(
         x = torch.stack([i.to(device) for i in images])
         with torch.autocast(device.type, dtype=torch.float16, enabled=amp):
             res = model(pixel_values=x)
-        probs = res.logits.float().sigmoid()
-        _, n_q, n_c = probs.shape
-        scores, idx = probs.flatten(1).topk(min(detections_per_img, n_q * n_c), dim=1)
-        query, cls = idx // n_c, idx % n_c
-        cxcywh = res.pred_boxes.float().gather(1, query.unsqueeze(-1).expand(-1, -1, 4))
-        h, w = x.shape[-2:]
-        xyxy = torch.cat([cxcywh[..., :2] - cxcywh[..., 2:] / 2,
-                          cxcywh[..., :2] + cxcywh[..., 2:] / 2], dim=-1)
-        xyxy = xyxy * torch.tensor([w, h, w, h], device=xyxy.device, dtype=xyxy.dtype)
-        for i, meta in enumerate(metas):
-            keep = scores[i] >= score_thresh
-            boxes = xyxy[i][keep].cpu().numpy().astype(np.float64)
-            boxes = meta["affine"].invert(boxes)
-            oh, ow = meta["size"]
-            out.append(
-                Detections.of(
-                    clip_boxes(boxes, ow, oh),
-                    scores[i][keep].cpu().numpy(),
-                    (cls[i][keep] + 1).cpu().numpy(),  # back to 1..K
-                )
-            )
+        decoded = decode(
+            res.logits, res.pred_boxes, (x.shape[-2], x.shape[-1]),
+            score_thresh=score_thresh, detections_per_img=detections_per_img,
+        )
+        out += [to_detections(*d, meta) for d, meta in zip(decoded, metas, strict=True)]
     return out

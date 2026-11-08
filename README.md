@@ -10,7 +10,7 @@ Phases 0a-0c (environment, project skeleton, risk spikes), 1a-1b (data, splits, 
 2a.1 (evaluation code, classical baseline), 2a.2 (Faster R-CNN), 2b.1 (D-FINE-S), 2b.2 (comparison), the
 matched Faster R-CNN rerun, 3a-3c (PatchCore, AnomalyDINO, EfficientAD, few-shot curve) and 4a (cost-based
 thresholds, one frozen evaluation, error gallery) are done. Phase 4b (leave-one-defect-type-out on VisA pcb1) is run: it weakly supports the claim that the anomaly path catches
-defect types the detector never saw (clearly for `missing`, undecided for the rest, small sample), see its section. Not started: ONNX export, TensorRT, the API and demo (Phase 5 onward). Every number below
+defect types the detector never saw (clearly for `missing`, undecided for the rest, small sample), see its section. Phase 5a (ONNX export, verification against PyTorch, ORT CUDA benchmark) is done. Not started: TensorRT, the API and demo (Phase 5b onward). Every number below
 comes from an MLflow run or a script output; details per phase are in [PLAN.md](PLAN.md).
 
 ## Setup (WSL2 Ubuntu, NVIDIA GPU)
@@ -19,11 +19,11 @@ comes from an MLflow run or a script output; details per phase are in [PLAN.md](
 uv sync                              # locked env from uv.lock, CUDA 13 torch build
 uv run python scripts/check_env.py   # prints torch/CUDA/ONNX Runtime provider status
 uv run pytest && uv run ruff check . && uv run mypy src
-uv run pytest -m slow                # the 3 tests above 5 s, skipped by default
+uv run pytest -m slow                # the 6 tests above 5 s, skipped by default
 ```
 
-The default run skips tests marked `slow` (above 5 s each) to stay under 60 s: 176 tests in 31 s here, plus 3 slow
-tests in 47 s. `.github/workflows/ci.yml` installs the `cpu` group from the lockfile and runs ruff, mypy, `pytest` and
+The default run skips tests marked `slow` (above 5 s each) to stay under 60 s: 230 tests in 33 s here, plus 6 slow
+tests in 105 s. `.github/workflows/ci.yml` installs the `cpu` group from the lockfile and runs ruff, mypy, `pytest` and
 `pytest -m slow`; it has not run yet (it needs a push).
 
 ## Spike findings so far
@@ -355,3 +355,34 @@ seed, one category, a detector trained on 23 to 47 images, and operating points 
 time here, for a different question than in Phase 4a, with the owner's approval on the condition that these five runs are
 the only ones and the recipe is not changed (both held); thresholds come from calibration normals only and no 4a result
 changes. Intervals, seen-type tables and notes: [reports/unseen_defects.md](reports/unseen_defects.md).
+
+**Exploratory follow-up (outside the approved protocol).** Afterwards, at the owner's request, the detector's recall on each type was compared between the control run (type trained on) and the held-out run, on the same evaluation images, using only the per-image scores already saved (no new run). Held-out recall is lower for all four types (5% budget: bent 6/9 against 9/9, melt 15/28 against 24/28, missing 0/7 against 5/7, scratch 10/13 against 13/13), and `missing` is not simply undetectable for this detector (the control run catches 5/7). It does not isolate novelty: the held-out detectors also train on fewer images (23 to 42 against 47), each is one seed, the exact p-values (0.25, 0.022, 0.062, 0.25) are uncorrected for eight comparisons, and the Phase 4b verdict stands. Method, tables and caveats: [reports/unseen_followup.md](reports/unseen_followup.md).
+
+## ONNX export and ONNX Runtime CUDA (Phase 5a)
+
+All five trained models export to ONNX (opset 20, batch 1): D-FINE-S, EfficientAD (four VisA categories), PatchCore,
+AnomalyDINO and Faster R-CNN. The Dynamo exporter fails on Faster R-CNN (a data-dependent size in torchvision's detection
+head); the TorchScript exporter works. Files go to `models/onnx/` (git-ignored); every attempt, including failures, is in
+`reports/onnx_export.json`.
+
+```bash
+uv run python scripts/export_onnx.py
+uv run python scripts/verify_onnx.py models=dfine_s              # accuracy against PyTorch (options in the docstring)
+uv run python scripts/benchmark.py providers=cuda models=dfine_s
+uv run python scripts/render_benchmark.py                        # builds reports/benchmark.md
+```
+
+**Accuracy.** With ORT's TF32 off, D-FINE-S reproduces PyTorch fp32 on the detection metrics (test AP@50 0.7308, AP@50:95
+0.4447; val 0.7103 / 0.4345, identical to four decimals), though not slot for slot on every image (233 of 270 val images
+are within 1e-3 on the raw outputs). Phase 0c had found that ORT's default TF32 changes D-FINE's raw outputs completely.
+Measured now: it does change them (no image within 1e-3, top-100 overlap 0.71), but not the metrics: AP@50:95 differs by
++0.0001 [-0.0008, +0.0011] on test (paired bootstrap over 270 images; a difference of about 0.001 is not excluded), and
+PyTorch's own default and the AMP path of Phase 2 differ from strict fp32 just as much with the same AP. The default stays
+TF32 off. Faster R-CNN and the three anomaly models also match PyTorch (anomaly scores within 9.3e-5 relative, same AUROC).
+
+**Latency** (batch 1, model only, p50, ORT CUDA with TF32 off / on): D-FINE-S 30.89 / 28.87 ms, EfficientAD 12.95 / 9.03,
+PatchCore 10.44 / 9.20, AnomalyDINO 28.71 / 23.21, Faster R-CNN 77.01 / 45.94. ONNX Runtime is **not uniformly faster than
+PyTorch eager** here (D-FINE-S in PyTorch strict fp32 takes 27.45 ms), so what the export gives is a portable, verified
+artefact, not speed. AnomalyDINO under ORT uses about 4.9 GB of device memory (about 1.9 GB in PyTorch). One machine (RTX 4060
+Laptop, WSL2), one run per row, no pre- or post-processing in the timings; protocol, resources, limits and what was not
+measured: [reports/benchmark.md](reports/benchmark.md).
