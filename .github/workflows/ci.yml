@@ -7,29 +7,32 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Pinned: `ubuntu-latest` is moving to a newer image, which would change CI under us.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
 
-      # CPU torch/onnxruntime from the `cpu` group (the default groups are the CUDA build).
+      # CPU torch/onnxruntime from the `cpu` group. The project's default groups are the CUDA
+      # build (`cu130`), so every later `uv run` must use --no-sync: without it uv re-syncs the
+      # environment to the default groups and tries to install several GB of CUDA wheels.
       - name: Install dependencies
         run: uv sync --locked --no-default-groups --group cpu --group serve --group dev
 
       - name: Lint
-        run: uv run ruff check .
+        run: uv run --no-sync ruff check .
 
       - name: Type check
-        run: uv run mypy src
+        run: uv run --no-sync mypy src
 
-      # Default run: everything not marked slow (under 60 s locally).
+      # Default run: everything not marked slow (about 30 s).
       - name: Tests (fast)
-        run: uv run pytest
+        run: uv run --no-sync pytest
 
       # Tests marked `slow` (> 5 s each) are excluded from the default run and run here.
       - name: Tests (slow)
-        run: uv run pytest -m slow
+        run: uv run --no-sync pytest -m slow

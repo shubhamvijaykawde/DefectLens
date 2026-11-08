@@ -110,8 +110,12 @@ def test_early_stopping_ends_a_flat_run(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     raw, processed = tiny_data
+    # data/splits/*.json is DVC-tracked and absent from a clean checkout (CI): use a stand-in
+    splits = tmp_path / "splits.json"
+    splits.write_text('{"meta": {"split_hash": "test"}}')
     args = [
         *_run_args(raw, processed), "model.epochs=6", "model.patience=1", "trainer.run_test=false",
+        f"data.splits_file={splits}",
         "model.warmup_iters=1", f"model.checkpoint_dir={tmp_path / 'ckpt'}",
         f"mlflow.tracking_uri=sqlite:///{tmp_path / 'mlflow.db'}",
         f"mlflow.artifact_root={tmp_path / 'artifacts'}", "experiment=test_early_stop",
