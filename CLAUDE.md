@@ -58,3 +58,4 @@ reports/       # results tables and figures that go into the README
   and push myself. Writing workflow files (e.g. .github/workflows/ci.yml) is fine.
 - At the end of each phase, update PLAN.md (status + measured results) and the README section.
 - Never add Co-Authored-By or any Claude attribution lines to suggested commit messages.
+- Never wait on a process with a pgrep -f loop whose pattern appears in its own command line (it matches itself and never ends). Use wait <PID>, a done-file, or run in the foreground.
