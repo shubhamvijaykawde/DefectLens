@@ -42,6 +42,18 @@ serve = [
     "pyyaml>=6.0.3",
     "uvicorn>=0.54.0",
 ]
+# Runtime of the Docker image next to `serve`: ONNX Runtime with the CUDA 13 / cuDNN 9 libraries
+# as pip wheels (so the image needs no CUDA base image), plus the two compiled libraries the serving
+# code imports. No torch. Do not combine with `cpu` (both ship the `onnxruntime` module).
+# The `[cuda]` extra brings cudart, cuFFT, cuRAND and NVRTC only. cuBLAS and cuDNN, which the CUDA
+# provider also loads, come from torch in the `cu130` group, so without torch they are listed here.
+serve-gpu = [
+    "onnxruntime-gpu[cuda]==1.31.1",
+    "nvidia-cublas",
+    "nvidia-cudnn-cu13",
+    "opencv-python-headless",
+    "numpy",
+]
 dev = [
     "pytest",
     "ruff",
@@ -53,6 +65,7 @@ dev = [
 default-groups = ["cu130", "serve", "dev"]
 conflicts = [
     [{ group = "cu130" }, { group = "cpu" }],
+    [{ group = "serve-gpu" }, { group = "cpu" }],
 ]
 
 [tool.uv.sources]

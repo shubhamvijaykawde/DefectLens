@@ -1,0 +1,17 @@
+# Deny everything, then allow only what the image needs (the Dockerfile COPYs exactly these).
+# This keeps weights, data, MLflow runs, the venv and git history out of the build context
+# (models/ alone is >1 GB): weights are mounted at run time, never baked in.
+*
+!pyproject.toml
+!uv.lock
+!README.md
+!src/defectlens
+!configs/serve
+!reports/frozen_thresholds.json
+
+# even inside the allowed paths
+**/__pycache__
+**/*.pyc
+**/*.onnx
+**/*.pt
+**/*.pth

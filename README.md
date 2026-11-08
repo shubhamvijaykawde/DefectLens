@@ -10,7 +10,7 @@ Phases 0a-0c (environment, project skeleton, risk spikes), 1a-1b (data, splits, 
 2a.1 (evaluation code, classical baseline), 2a.2 (Faster R-CNN), 2b.1 (D-FINE-S), 2b.2 (comparison), the
 matched Faster R-CNN rerun, 3a-3c (PatchCore, AnomalyDINO, EfficientAD, few-shot curve) and 4a (cost-based
 thresholds, one frozen evaluation, error gallery) are done. Phase 4b (leave-one-defect-type-out on VisA pcb1) is run: it weakly supports the claim that the anomaly path catches
-defect types the detector never saw (clearly for `missing`, undecided for the rest, small sample), see its section. Phase 5a (ONNX export, verification against PyTorch, ORT CUDA benchmark) and Phase 6a (the FastAPI service) are done. Not started: TensorRT (5b, optional), the Gradio demo and the Docker image (6b), the final CI run and README tables (6c). Every number below
+defect types the detector never saw (clearly for `missing`, undecided for the rest, small sample), see its section. Phase 5a (ONNX export, verification against PyTorch, ORT CUDA benchmark) and Phase 6a (the FastAPI service) are done. Phase 6b (Gradio demo, GPU Docker image, smoke test) is done. Not started: TensorRT (5b, optional), the final CI run and README tables (6c). Every number below
 comes from an MLflow run or a script output; details per phase are in [PLAN.md](PLAN.md).
 
 ## Setup (WSL2 Ubuntu, NVIDIA GPU)
@@ -418,3 +418,25 @@ products 404, a missing or unloadable model 503. Settings: `configs/serve/defaul
   calibration images at its frozen threshold, so its flags say little; heatmap regions are derived from the anomaly map and have not been evaluated as
   boxes; a live check with one sequential client gave warm server-side p50 of 75.2 ms (steel), 27.6 ms (pcb1) and 31.0 ms (candle); no load
   test, no authentication.
+
+## Demo and Docker (Phase 6b)
+
+```bash
+docker build -t defectlens:local .
+docker run --rm --gpus=all -p 8000:8000 -v "$PWD/models:/app/models:ro" defectlens:local   # or: docker compose up
+# API on :8000, Gradio demo on http://localhost:8000/demo
+bash scripts/docker_smoke.sh            # starts its own containers; needs the weights in ./models
+```
+
+The demo (`serve/demo.py`) runs the same code as `POST /inspect` and draws the answer: boxes for steel, the heatmap overlay for a VisA product,
+with the operating point, provider and timings. The image installs only the `serve` and `serve-gpu` groups of `uv.lock`: no torch, no
+TensorRT, ONNX Runtime with the CUDA 13 and cuDNN 9 libraries from pip wheels, and it runs as a non-root user. **Weights are not in the image**
+(mount `./models` read-only); the frozen thresholds file is. Without `--gpus` the same image serves on CPU, and `/health` says so and why.
+
+- **Measured** (`reports/docker_smoke.json`, one run, WSL2 + Docker Desktop, RTX 4060 Laptop): the smoke test passes 9 checks, including `/health` and
+  `/inspect` for `steel` and `visa_pcb1` on `CUDAExecutionProvider`. Image size: 5.22 GB as Docker reports it, 3,189 MiB of files inside,
+  1.87 GB compressed; most of it is CUDA libraries (CUDA 13 libraries including cuBLAS and cuFFT 1.3 GB, cuDNN 0.9 GB). Nothing was pruned.
+  The smoke test uses a synthetic image, so it shows that the service works, not that its answers are good.
+- **Found by running it:** the first image served on CPU, because the `onnxruntime-gpu[cuda]` extra does not install cuBLAS or cuDNN (locally torch
+  provides them). `/health` reported CPU and the reason; fixed with two packages in the `serve-gpu` group.
+- **Not measured:** other GPUs and drivers, load, container memory and VRAM, a CPU-only image, a CI build (6c).

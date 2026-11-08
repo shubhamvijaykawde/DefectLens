@@ -112,7 +112,8 @@ def test_serve_steel_preprocess_matches_the_preprocess_config() -> None:
 
 def test_serve_package_does_not_import_torch() -> None:
     code = (
-        "import sys, defectlens.serve.app, defectlens.serve.inference, defectlens.serve.config;"
+        "import sys, defectlens.serve.app, defectlens.serve.inference, defectlens.serve.config,"
+        " defectlens.serve.demo;"
         "bad = sorted(m for m in ('torch', 'torchvision', 'transformers', 'anomalib', 'mlflow')"
         " if m in sys.modules); assert not bad, bad"
     )

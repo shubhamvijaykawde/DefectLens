@@ -1,0 +1,24 @@
+# DefectLens API + demo with the GPU. Weights come from ./models, mounted read-only.
+#   docker compose up --build        # API on :8000, demo on :8000/demo
+#   bash scripts/docker_smoke.sh --url http://localhost:8000
+services:
+  defectlens:
+    image: defectlens:local
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/app/models:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    read_only: true          # the service writes only to /tmp
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true

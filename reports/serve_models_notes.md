@@ -73,7 +73,7 @@ the TF32 setting and the frozen file's SHA-256 with every answer, so a result ca
 steel cost shift above is disclosed here and in the README, not corrected. **Alternative I did not take:** re-select the
 thresholds on ORT scores of the selection splits. That gives thresholds matching what the API computes, but they would be new
 numbers no evaluation has seen, and checking them on `threshold_evaluation` / `test` would be a second read of those splits
-(a protocol breach under the Phase 4a rules). It needs your decision.
+(a protocol breach under the Phase 4a rules). **Decided by the project owner after reading this: not taken, see "Decisions" below.**
 
 **Not measured:** the CPU fallback path (ORT CPU against PyTorch); any evaluation split; false alarms on clean steel (there is
 no clean steel); the number of production images near a threshold. The API answers on CPU when CUDA is unavailable, and the
@@ -109,3 +109,15 @@ off as decided in Phase 5a. A test checks that the config follows the rule on th
 - **Limits:** a single client; no concurrency or load test; no authentication or rate limiting; a model load holds the registry lock,
   so other requests wait for it (hundreds of ms); heatmap regions are derived from the map and not evaluated as boxes (only pixel
   AUROC and AUPRO were measured); the `fn_fp_ratio` choices are the assumed ratios of Phase 4a, not measured costs.
+
+## Decisions (project owner, after reading the Phase 6a report; 2026-11-08)
+
+1. **The frozen Phase 4a thresholds stay as they are. No re-selection on ORT scores.** The API serves the thresholds in
+   `reports/frozen_thresholds.json` for every product and returns the operating point with each answer. The steel cost shift
+   (+2.9% / +1.4% / +2.4% on `val`, section 2) and the zero-flip VisA result with its ~1% caveat remain disclosed limitations,
+   not something to correct. Consequence: the evaluation splits are not read a second time.
+2. **`steel` stays the augmented Faster R-CNN** (`format: torchvision`, `models/onnx/faster_rcnn.onnx`). D-FINE-S remains
+   implemented behind the config switch in section 1 but is not served. The decision did not mention the 0.05 AUROC rule for the anomaly products, so it stands
+   as written (my judgement, not a confirmed choice) (cashew EfficientAD, candle PatchCore).
+
+This section records the decisions; no measurement changed.

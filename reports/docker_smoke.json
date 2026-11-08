@@ -1,0 +1,69 @@
+{
+  "date": "2026-11-09",
+  "mode": "container",
+  "image_tag": "defectlens:local",
+  "image_id": "sha256:73950f1dfaa9d9b43a040fa87ffa59290b28d4d2cf160e0b144525fa28752342",
+  "image_size_bytes": 5216981475,
+  "image_size_gib": 4.859,
+  "image_size_note": "image_size_bytes is `docker image inspect .Size`; image_filesystem_mib is `du -sx /` inside a container of the image (the files themselves)",
+  "image_filesystem_mib": 3189,
+  "test_image": "tests/fixtures/sample.jpg",
+  "note": "first call per product includes the model load; synthetic test image, so scores are not meaningful",
+  "gpu_container": {
+    "health": {
+      "status": "ok",
+      "provider": "CUDAExecutionProvider",
+      "fallback_reason": "",
+      "onnxruntime": "1.31.1"
+    },
+    "inspect": {
+      "steel": {
+        "provider": "CUDAExecutionProvider",
+        "flagged": true,
+        "model": "faster_rcnn_aug",
+        "tf32": false,
+        "total_ms": 1817.5,
+        "model_load_ms": 1014.1,
+        "inference_ms": 796.4
+      },
+      "visa_pcb1": {
+        "provider": "CUDAExecutionProvider",
+        "flagged": true,
+        "model": "efficientad",
+        "tf32": true,
+        "total_ms": 154.8,
+        "model_load_ms": 105.8,
+        "inference_ms": 44.1
+      }
+    }
+  },
+  "container_without_gpu": {
+    "health": {
+      "status": "ok",
+      "provider": "CPUExecutionProvider",
+      "fallback_reason": "CUDAExecutionProvider could not be loaded (usually a missing CUDA 13 / cuDNN 9 library; see the onnxruntime warning in the log)"
+    },
+    "inspect": {
+      "visa_pcb1": {
+        "provider": "CPUExecutionProvider",
+        "flagged": true,
+        "model": "efficientad",
+        "tf32": true,
+        "total_ms": 380.5,
+        "model_load_ms": 206.8,
+        "inference_ms": 168.5
+      }
+    }
+  },
+  "checks_passed": [
+    "gpu: /health ok, provider CUDAExecutionProvider",
+    "gpu: /inspect steel 200 on CUDAExecutionProvider (flagged, 1817 ms with model load 1014 ms)",
+    "gpu: /inspect visa_pcb1 200 on CUDAExecutionProvider (flagged, 155 ms with model load 106 ms)",
+    "gpu: heatmap present, demo page loads",
+    "image: torch is not installed",
+    "image: no TensorRT library",
+    "image: runs as uid 10001",
+    "image: weights mount is read-only, root filesystem is read-only",
+    "no GPU: /health says CPUExecutionProvider with a reason, /inspect visa_pcb1 answers on CPU"
+  ]
+}
