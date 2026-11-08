@@ -85,3 +85,69 @@ def tiny_visa(tmp_path: Path) -> dict[str, Path]:
     splits_dir.mkdir()
     (splits_dir / "visa_cat.json").write_text(json.dumps({"meta": {"category": "cat"}, **splits}))
     return {"root": root, "csv": csv_path, "splits": splits_dir}
+
+
+@pytest.fixture
+def tiny_typed_visa(tmp_path: Path) -> dict[str, Path]:
+    """A VisA-like tree for category ``cat`` with defect types, 96x128 colour images.
+
+    ``train``: 6 normal. Each test half: 6 normal plus melt x3, missing x2, bent x2 and one
+    multi-type image (calibration: melt+missing, evaluation: bent+missing); the evaluation half
+    has melt x2 instead of x3. Masks are one block per image (two for melt).
+    """
+    import csv
+    import json
+
+    root = tmp_path / "visa"
+    rng = np.random.default_rng(1)
+    rows: list[dict[str, str]] = []
+    anno: list[dict[str, str]] = []
+    splits: dict[str, list[str]] = {
+        "train": [], "threshold_calibration": [], "threshold_evaluation": [],
+    }
+
+    def add(split: str, label: str, key: str, i: int) -> None:
+        normal = label == "normal"
+        rel = f"cat/Data/Images/{'Normal' if normal else 'Anomaly'}/{key}{i:02d}.JPG"
+        mask_rel = "" if normal else f"cat/Data/Masks/Anomaly/{key}{i:02d}.png"
+        img = rng.normal(100, 4, (96, 128, 3)).clip(0, 255).astype(np.uint8)
+        (root / rel).parent.mkdir(parents=True, exist_ok=True)
+        if not normal:
+            mask = np.zeros((96, 128), dtype=np.uint8)
+            mask[20:36, 30:50] = 255
+            if "melt" in label:
+                mask[60:68, 80:90] = 255
+            img[mask > 0] = 240
+            (root / mask_rel).parent.mkdir(parents=True, exist_ok=True)
+            cv2.imwrite(str(root / mask_rel), mask)
+        cv2.imwrite(str(root / rel), img)
+        rows.append({"object": "cat", "split": "train" if split == "train" else "test",
+                     "label": "normal" if normal else "anomaly", "image": rel, "mask": mask_rel})
+        anno.append({"image": rel, "label": label, "mask": mask_rel})
+        splits[split].append(rel)
+
+    for i in range(6):
+        add("train", "normal", "tr", i)
+    layout = {
+        "threshold_calibration": ["melt"] * 3 + ["missing"] * 2 + ["bent"] * 2 + ["melt,missing"],
+        "threshold_evaluation": ["melt"] * 2 + ["missing"] * 2 + ["bent"] * 2 + ["bent,missing"],
+    }
+    for split, labels in layout.items():
+        for i, label in enumerate(labels):
+            add(split, label, f"{split[10:13]}a", i)
+        for i in range(6):
+            add(split, "normal", f"{split[10:13]}n", i)
+
+    def write(path: Path, fields: list[str], data: list[dict[str, str]]) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=fields)
+            w.writeheader()
+            w.writerows(data)
+
+    write(root / "1cls.csv", ["object", "split", "label", "image", "mask"], rows)
+    write(root / "cat" / "image_anno.csv", ["image", "label", "mask"], anno)
+    splits_dir = tmp_path / "splits"
+    splits_dir.mkdir()
+    (splits_dir / "visa_cat.json").write_text(json.dumps({"meta": {"category": "cat"}, **splits}))
+    return {"root": root, "csv": root / "1cls.csv", "splits": splits_dir}

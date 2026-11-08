@@ -22,7 +22,8 @@ Plan approved 2026-11-01 (revision 2).
 | 3b.1 EfficientAD loss-curve check (no retraining) | **Done** | Read the logged `loss_st`, `loss_ae`, `loss_stae` of the four full runs (700 points each, 100-step means) in MLflow and compared with `~/efficientad_3b.log`. **No rise in `loss_ae` in any category, so there is no sign of a bug:** the macaroni2 curve falls from 0.597 (mean of the first 5,000 steps) to 0.188 (last 5,000); none of the 13 steps between consecutive 5,000-step windows rose for `loss_ae` in any category, and the largest rebound of a 1,000-step mean above its running minimum is 0.006 (macaroni2, step 43,000). The values quoted from the log (about 0.08 near step 8,000, about 0.22 around step 44,000, 0.17 at the end) match different categories: `loss_ae` at step 8,000 is 0.0822 (cashew) and 0.0846 (candle) but 0.2884 (pcb1) and 0.4252 (macaroni2); at step 44,000 it is 0.0472 / 0.0317 / 0.1887 / 0.2374, and the final values are 0.0386 / 0.0254 / 0.1764 / 0.1734. macaroni2 and pcb1 simply plateau at a much higher autoencoder loss than cashew and candle (final 0.17-0.18 against 0.03-0.04), and every category drops after the learning-rate step at 95% of the steps (step 66,500), as expected. Higher reconstruction loss on macaroni2 is consistent with it being the hardest category for the other two models as well, but that is not tested here; a falling loss also does not prove the implementation right (the evidence for that remains the 0.99 pixel AUROC on macaroni2 and pcb1 and the unit tests) |
 | CI and slow tests (early part of 6c) | **Done, CI not yet run** | Tests above 5 s are marked `@pytest.mark.slow` (3 tests: `test_fast_dev_run_returns_a_valid_eval_dict` 24.2 s, `test_run_anomaly_efficientad_logs_loss_curve_and_checkpoint` 8.2 s, `test_same_seed_same_training` 6.3 s). `addopts` has `-m 'not slow'`, so `uv run pytest` ran 130 tests in 29 s when the marker was added (the whole suite was 133 tests in 74 s before) and 176 tests in 31 s after the Phase 4a tests were added; `uv run pytest -m slow` runs the 3 in 46 s (47 s later) with `CUDA_VISIBLE_DEVICES=` (CPU only) at the first run, `-m ""` runs everything. `.github/workflows/ci.yml` (new): `uv sync --locked --no-default-groups --group cpu --group serve --group dev` (resolves from `uv.lock`, checked with `--dry-run`), ruff, mypy, `pytest`, `pytest -m slow`. The workflow itself has not run (it needs a push); no Docker step yet (no Dockerfile) |
 | 4a Cost-based thresholds, one frozen evaluation, error gallery | **Done** (🟢, run by me; MLflow `thresholds_select` `223169bc`, `thresholds_evaluate` `5ed3e5d5`, git `1b2620b6` + uncommitted changes) | **Code:** `eval/{thresholds,threshold_runs,scoring,gallery,gallery_run}.py`, `configs/cost/default.yaml` (ratios 5, 10, 50; IoU 0.5), `scripts/{select_thresholds,evaluate_thresholds,render_thresholds,error_gallery}.py`, tests `test_{thresholds,scoring,gallery}.py` (+ `detection_fixtures.py`). **Cost** = `fn_fp_ratio * FN + FP`; VisA at image level (one threshold per model and category, `score >= t`), NEU-DET at box level (one threshold per detector, class-aware greedy IoU 0.5; Faster R-CNN, matched Faster R-CNN, D-FINE-S). Candidates are midpoints between distinct scores, ties go to the median tied candidate. **Protocol in code:** `check_split` lets selection read only `threshold_calibration` / `val` and evaluation only `threshold_evaluation` / `test` (tests: selector rejects evaluation data, evaluator rejects selection data); `frozen_thresholds.json` carries a content hash that is verified before any evaluation data is read; the evaluator refuses to run without it or if it was edited, takes no options, and stops if a different frozen file was already evaluated. **Step 1** (71 s): 45 thresholds (36 VisA, 9 NEU-DET), frozen file SHA-256 `fef28e76…1b2620b6`; every reloaded model first reproduced the saved calibration scores (12 anomaly models) or the stored best-epoch val metrics (3 detectors) with max difference 0. Before step 2 I rehearsed the whole evaluator path on the *selection* splits only (providers remapped, nothing written): all 45 frozen counts were reproduced exactly. **Step 2** (67 s, run once): see `reports/thresholds.md`. VisA: of 36 thresholds 25 beat the trivial policy (flag nothing / flag everything), 3 tie, 8 are worse; cost per image was higher on evaluation than on selection for 31; 30 selections had no miss at selection and 13 of them missed at least one on evaluation. Total over four categories at ratio 10, selection to evaluation: PatchCore 104 to 152, EfficientAD 96 to 146, AnomalyDINO 99 to 129 (trivial 175); at ratio 50 all three exceed the trivial 175 (274 / 226 / 201). AnomalyDINO has the lowest total at all three ratios, not shown to be meaningful. macaroni2 is at or below the trivial policy for AnomalyDINO and PatchCore at every ratio. NEU-DET: 9 of 9 beat the trivial policy; the matched Faster R-CNN has the lowest test cost at every ratio (871 / 1,359 / 3,440), D-FINE-S none, single seed. **Step 3** (69 s): `reports/error_gallery.md` and 5 figures. Most NEU-DET misses are boxes of the right class that miss IoU 0.5 (74 of 84, 73 of 79 and 75 of 103 misses have a same-class kept box with IoU >= 0.1), concentrated in crazing and rolled-in scale; VisA errors are mostly false alarms, and on macaroni2 the frozen thresholds flag 45-50 of 50 normal images. The notes are hand-written (`reports/error_gallery_notes.md`) and feed back into nothing. **Flags:** the cost ratios are assumptions; the VisA halves are 67% (cashew) or 50% anomalous, not a production prevalence; NEU-DET `val` also chose each checkpoint, so its selection costs are optimistic, and NEU-DET `test` had been scored in Phase 2 at a fixed 0.5 (no threshold tuned on it); the frozen file records git `+dirty` because the tree was uncommitted; the evaluation split was read once by step 2 and again, read-only, by the gallery runs (5 runs while tuning the figure layout and the notes) with no threshold change; D-FINE-S is rebuilt from the cached HF weights before the checkpoint overwrites them |
-| 4b onward | Not started | TODO |
+| 4b Leave-one-defect-type-out on pcb1 | **Code done, smoke OK; the 🔴 runs are not run yet** (you run them, command in the Phase 4b section) | **Code:** `data/visa_to_coco.py` (mask → boxes, defect types from `image_anno.csv`), `detection/visa_detector.py`, `eval/{unseen,unseen_run}.py`, `configs/unseen/pcb1.yaml`, `scripts/{run_unseen,render_unseen}.py`, tests `test_{visa_to_coco,unseen,visa_detector}.py`; `NeuDetDataset` got a `read_image` hook and an `augment_empty` flag (defaults keep the steel path identical). **Data facts (counted from `image_anno.csv` and the saved splits):** pcb1 has 100 anomalous images, 92 with one defect type (melt 46, missing 17, bent 14, scratch 14) and 8 with several; images containing each type in the evaluation half: melt 28, missing 7, bent 9, scratch 13. **Smoke (🟢, nothing logged):** `holdout=melt`, 3 detector iterations + the three Phase 3 checkpoints on 200 images: 47 s wall, process peak RAM 3.09 GB (max RSS 3,092,680 kB), reloaded checkpoints reproduce the saved 4a scores exactly (max abs diff 0), detector peak VRAM 1,768 MiB allocated after 3 iterations and 2,110 MiB allocated / 2,400 MiB reserved after 25, about 0.14 s per iteration at 800 px, batch 2 (difference between a 5- and a 25-iteration timing, so rough). **Results: TODO, no number from the runs exists yet.** Gates: ruff and mypy clean, 205 tests in 31.6 s (176 before), 6 slow tests in 106 s on CPU (3 before: the new ones are the three tests that train a tiny Faster R-CNN) |
+| 5a onward | Not started | TODO |
 
 ## Context
 
@@ -568,16 +569,64 @@ uv run python scripts/error_gallery.py top_k=20
 ### Phase 4b — Leave-one-defect-type-out proof (mixed; cuttable, added by me)
 **Goal:** directly test the headline claim on one domain.
 **Packages:** none.
-**Files:** `src/defectlens/data/visa_to_coco.py` (masks → boxes), `src/defectlens/eval/unseen.py`,
-`configs/experiment/unseen_pcb1.yaml`, `scripts/run_unseen.py`, `tests/test_visa_to_coco.py`, `reports/unseen_defects.md`.
+**Files (as built):** `src/defectlens/data/visa_to_coco.py` (masks → boxes), `src/defectlens/eval/unseen.py` (protocol, numbers,
+report), `configs/unseen/pcb1.yaml`, `scripts/run_unseen.py`, `tests/test_visa_to_coco.py`, `reports/unseen_defects.md`.
+**Added (flag):** `src/defectlens/detection/visa_detector.py` (the NEU-DET dataset and trainer are tied to steel),
+`src/defectlens/eval/unseen_run.py` (orchestration with an injected anomaly scorer, so the protocol is testable),
+`scripts/render_unseen.py` (builds the report from the result files, like 4a), `tests/test_{unseen,visa_detector}.py`,
+`reports/unseen/pcb1_<holdout>.json` (one per run, written by the runs, committed).
+**Deviation:** the config is `configs/unseen/pcb1.yaml`, not `configs/experiment/unseen_pcb1.yaml`. A directory named
+`configs/experiment/` makes Hydra read `experiment=<name>` (the MLflow experiment name, used by `tests/test_dfine.py`) as a
+config-group override and the test failed with "Could not override 'experiment'". **Phase 8a's `configs/experiment/ablation.yaml`
+would break the same way: use another directory name.**
+**Protocol (decided before any run, written in `eval/unseen.py` and the report):**
+- One run per held-out type T in {bent, melt, missing, scratch}, plus a control (`holdout=none`).
+- Detector: Faster R-CNN ResNet50-FPN v2 (COCO-pretrained), class-aware with a class for every type except T, 800 px, batch 2,
+  20 fixed epochs, last epoch used (no validation set, no checkpoint selection). Training set: `threshold_calibration`
+  anomalies with exactly one defect type and not T (a mask cannot be split by type, so the 8 multi-type images are never
+  trained on) plus 100 normal images from `train` (same sample every run). Boxes: mask fragments within 25 px merge, fewer
+  than 20 mask pixels are dropped, 6 px padding (chosen by looking at box sizes on the masks, not at any metric).
+- Anomaly models: the Phase 3 PatchCore, AnomalyDINO and EfficientAD checkpoints, unchanged, reloaded with the 4a
+  reproduce-the-saved-scores check.
+- Operating points (same rule for all four models, not the 4a cost thresholds, which stay frozen): lowest threshold whose
+  false-alarm rate on the 50 `threshold_calibration` normal images is at most 5% or 10%. Only normal scores are used, so the
+  detector having trained on calibration anomalies cannot leak into its threshold (a test makes the selection function fail
+  if it reads any other score).
+- Reported: recall on `threshold_evaluation` anomalies that contain T (unseen) and that do not (seen, the detector's sanity
+  check), realised false-alarm rate on its 50 normals, and threshold-free image AUROC (all images containing T, both halves,
+  none of them in any training set, against all 100 test normals). Wilson 95% intervals; **small-sample**: unseen images per
+  type in the evaluation half are 28, 7, 9 and 13.
+- Image-level scoring: a detector's score is its highest box score; an image counts as caught if flagged anywhere, which is
+  generous to both kinds of model. `check_same_recipe` stops the renderer from mixing runs made with different settings, and
+  `run_unseen.py` refuses to overwrite a result unless `unseen.force=true`.
 **Commands:**
 ```bash
-uv run python scripts/run_unseen.py category=pcb1 holdout=<defect_type>
+# 🔴 all five runs, one process each (estimated 20-25 min in total, each run about 4-5 min)
+uv run python scripts/run_unseen.py category=pcb1 holdout=bent,melt,missing,scratch,none 2>&1 | tee ~/unseen_4b.log
+# 🟢 afterwards, no GPU, a few seconds
+uv run python scripts/render_unseen.py
 ```
-**Expected:** detector vs anomaly recall on the held-out type, in the same table. Few images per defect type,
-so flag as small-sample.
+A single type: `uv run python scripts/run_unseen.py category=pcb1 holdout=<defect_type>`. Path check without results
+(about 1 min, writes nothing, prints no evaluation-half number): `... holdout=melt unseen.smoke=true`.
+**Expected:** detector vs anomaly recall on the held-out type, in the same table (`reports/unseen_defects.md`), plus the
+seen-type check. Few images per defect type, so flagged as small-sample.
 **Done when:** the table exists and the README claim matches what it shows, whichever way it falls.
-**Resources:** Faster R-CNN: 3–4 GB VRAM, about 10 min (🔴 if over 5 min).
+**Resources:** the plan said 3-4 GB VRAM and about 10 min per run (🔴 if over 5 min). **Measured in the smoke:** 1,768 MiB
+(3 iterations) to 2,110 MiB (25 iterations) allocated, 2,400 MiB reserved; process peak RAM 3.09 GB; 47 s wall for the smoke.
+**Estimated, not measured:** 20 epochs of 62-74 iterations (62 melt, 68 missing, 71 bent and scratch, 74 control) at about 0.14 s is
+2.9-3.5 min of training, plus about 45 s of loading and scoring: about 4 min per run and 20 min for the five (the 20-25 min above
+leaves margin for the rough 0.14 s). The 🔴 label is for the total; peak VRAM should stay below 3 GiB.
+**Scope notes (flag):**
+- The held-out *type* is a different thing from a held-out *class* in NEU-DET: the detector has no class for T, but at image
+  level it can still raise an alarm on T through a known class, and that counts as a catch.
+- `threshold_evaluation` was already used once (4a frozen thresholds); here it is read again for a different question with
+  thresholds set on calibration normals only. No 4a threshold or result changes. The report says so.
+- The detector's training set is small (23 to 47 anomalous images, 31 to 68 boxes), so a weak detector is expected for
+  reasons unrelated to type novelty; that is what the seen-type table and the control run are for.
+- **Disclosure:** my first two smoke runs (`holdout=melt`, before and after adding the anomaly models) printed evaluation-half
+  rows. The detector had 3 training iterations then, so its rows say nothing, and the anomaly rows are the deterministic 4a
+  checkpoints. No setting was changed after seeing them. The smoke now prints calibration-side numbers only.
+- Only pcb1 was run; `category=` is generic but its masks were not checked for other categories.
 
 ### Phase 5a — ONNX export and ORT CUDA (🟢) — **required, the guaranteed deployment target**
 **Goal:** verified ONNX models and the benchmark the MVP relies on.

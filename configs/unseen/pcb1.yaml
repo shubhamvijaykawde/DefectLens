@@ -1,0 +1,31 @@
+# Phase 4b: leave-one-defect-type-out on VisA pcb1.
+# Merged over `data=visa model=faster_rcnn` by scripts/run_unseen.py (a plain file, not a Hydra
+# group: a directory called configs/experiment/ would turn Hydra's `experiment=<name>` override, the
+# MLflow experiment name, into a config-group choice). Override any key from the
+# command line, e.g. `unseen.holdout=bent` or `model.input_size=640`.
+#
+# The recipe is fixed here BEFORE any run. There is no validation set (the anomalous images are
+# too few), so there is no checkpoint selection and no tuning: the last epoch is used, and nothing
+# is changed after looking at threshold_evaluation. The model block copies the Phase 2a.2 Faster
+# R-CNN recipe except where the images force a change (size, batch, linear lr scaling).
+unseen:
+  category: pcb1
+  holdout: melt              # bent | melt | missing | scratch | none (control: nothing held out)
+  max_fprs: [0.05, 0.10]     # false-alarm budgets on the calibration normals (50 images: 2 and 5)
+  n_normals: 100             # normal images from `train` used as negatives (same sample each run)
+  epochs: 20                 # fixed; the last epoch is used
+  anomaly_models: [patchcore, anomaly_dino, efficientad]   # Phase 3 checkpoints; [] = detector only
+  box: {merge_px: 25, min_area: 20, pad_px: 6}   # mask -> box (original pixels), see visa_to_coco
+  out_dir: reports/unseen    # one result JSON per run (committed: the report is built from them)
+  work_dir: outputs/unseen   # COCO files of the run (git-ignored)
+  smoke: false               # true: 1 epoch of 3 batches, nothing written or logged
+  force: false               # true: overwrite an existing result file (say so in the report)
+
+model:
+  input_size: 800            # pcb1 frames are 1404x1070 and melt defects are ~70x45 px
+  batch_size: 2              # 800 px at batch 4 would not leave margin in 8 GB
+  lr: 0.0025                 # 0.005 (batch 4) scaled linearly to batch 2
+  warmup_iters: 40
+  # The boards always sit upright, so no flips; shifts and scale keep the board in frame.
+  augment: {hflip: 0.0, vflip: 0.0, brightness_contrast: 0.5, scale_translate: 0.5}
+  checkpoint_dir: models/unseen   # unused: no checkpoint is kept

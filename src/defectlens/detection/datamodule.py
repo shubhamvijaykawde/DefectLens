@@ -14,6 +14,7 @@ from typing import Any
 import albumentations as A
 import cv2
 import numpy as np
+import numpy.typing as npt
 import torch
 from torch.utils.data import DataLoader, Dataset
 
@@ -46,6 +47,10 @@ def build_augment(cfg: Any, seed: int) -> A.Compose:
 
 
 class NeuDetDataset(Dataset[Item]):
+    # Subclasses with image-level negatives (no boxes) set this so that those images are augmented
+    # too; otherwise only the defective images would be flipped / shifted, a shortcut for the model.
+    augment_empty = False
+
     def __init__(
         self,
         coco_path: Path,
@@ -65,15 +70,19 @@ class NeuDetDataset(Dataset[Item]):
         """Ground truth in the original frame, in dataset order (first ``n`` images)."""
         return [GroundTruth.of(it.boxes, it.labels) for it in self.items[:n]]
 
-    def __getitem__(self, idx: int) -> Item:
-        it: CocoImage = self.items[idx]
+    def read_image(self, it: CocoImage) -> npt.NDArray[np.uint8]:
+        """Pixels of one item as uint8, (H, W) grayscale here; subclasses may return (H, W, 3)."""
         gray = cv2.imread(str(self.images_dir / it.file_name), cv2.IMREAD_GRAYSCALE)
         if gray is None:
             msg = f"cannot read {self.images_dir / it.file_name}"
             raise FileNotFoundError(msg)
-        res = self.pre(np.asarray(gray, dtype=np.uint8), it.boxes)
+        return np.asarray(gray, dtype=np.uint8)
+
+    def __getitem__(self, idx: int) -> Item:
+        it: CocoImage = self.items[idx]
+        res = self.pre(self.read_image(it), it.boxes)
         img, boxes, labels = res.image, res.boxes, it.labels[res.keep]
-        if self.augment is not None and len(boxes):
+        if self.augment is not None and (len(boxes) or self.augment_empty):
             h, w = img.shape[:2]
             out = self.augment(
                 image=img,

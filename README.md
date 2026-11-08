@@ -9,9 +9,10 @@ detector for unseen defects (VisA), exported to ONNX and served as an API. Work 
 Phases 0a-0c (environment, project skeleton, risk spikes), 1a-1b (data, splits, preprocessing),
 2a.1 (evaluation code, classical baseline), 2a.2 (Faster R-CNN), 2b.1 (D-FINE-S), 2b.2 (comparison), the
 matched Faster R-CNN rerun, 3a-3c (PatchCore, AnomalyDINO, EfficientAD, few-shot curve) and 4a (cost-based
-thresholds, one frozen evaluation, error gallery) are done. Not started: ONNX export, TensorRT, the API and demo
-(Phases 4b and 5 onward). Every number below comes from an MLflow run or a script output; details per phase are
-in [PLAN.md](PLAN.md).
+thresholds, one frozen evaluation, error gallery) are done. Phase 4b (leave-one-defect-type-out on VisA pcb1) has its code,
+tests and smoke check, but its runs have not been made, so the claim that the anomaly path catches what the detector
+misses is **not yet tested**. Not started: ONNX export, TensorRT, the API and demo (Phase 5 onward). Every number below
+comes from an MLflow run or a script output; details per phase are in [PLAN.md](PLAN.md).
 
 ## Setup (WSL2 Ubuntu, NVIDIA GPU)
 
@@ -307,3 +308,36 @@ NEU-DET test cost (the best constant policy, flag nothing, costs 3,140 / 6,280 /
   `val` also chose the checkpoints, so its selection costs are optimistic, and NEU-DET `test` had been scored in
   Phase 2 at a fixed score of 0.5 (no threshold tuned on it); the evaluation split was also read, read-only, by the
   error gallery; one seed throughout.
+
+## Unseen defect types: leave-one-type-out on VisA pcb1 (Phase 4b)
+
+The question behind the whole project: when a defect type never appeared in the supervised detector's training data,
+does the anomaly path (trained on normal images only) still catch it, and does the detector miss it? VisA pcb1 has
+four defect types (melt, missing, bent, scratch; 100 anomalous images, 8 of them with several types), so the test is
+run on it.
+
+```bash
+uv run python scripts/run_unseen.py category=pcb1 holdout=bent,melt,missing,scratch,none   # one process per holdout
+uv run python scripts/render_unseen.py                                                     # builds the report
+```
+
+For each held-out type a Faster R-CNN is trained without it (on `threshold_calibration` anomalies with a single other
+type, plus 100 normal images), and compared with the three Phase 3 anomaly models at the same false-alarm budget (5% and
+10% on the calibration normals; only normal scores set a threshold). Recall is image-level on `threshold_evaluation`,
+for images that contain the held-out type ("unseen") and for those that do not ("seen", which shows whether the detector
+is simply weak with 23 to 47 training images). A `none` run holds nothing out. The recipe is fixed in
+[configs/unseen/pcb1.yaml](configs/unseen/pcb1.yaml) before any run; the protocol and its limits are in
+[reports/unseen_defects.md](reports/unseen_defects.md).
+
+| held-out type | unseen images (evaluation half) | Faster R-CNN | PatchCore | AnomalyDINO | EfficientAD |
+|---|---|---|---|---|---|
+| melt | 28 | TODO | TODO | TODO | TODO |
+| missing | 7 | TODO | TODO | TODO | TODO |
+| bent | 9 | TODO | TODO | TODO | TODO |
+| scratch | 13 | TODO | TODO | TODO | TODO |
+
+TODO: this table, the seen-type check and the sentence that says whether the headline claim holds, fill in from
+`reports/unseen_defects.md` after the runs. The claim is not made until then. Whatever the table shows, it is a small
+sample (7 to 28 unseen images per type, wide intervals), one seed, one category, and `threshold_evaluation` is read a
+second time here, for a different question than in Phase 4a (thresholds from calibration normals only; no 4a result
+changes).
