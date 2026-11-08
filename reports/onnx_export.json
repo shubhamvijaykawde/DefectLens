@@ -212,5 +212,29 @@
    "labels"
   ],
   "reason": ""
+ },
+ {
+  "model": "patchcore",
+  "category": "candle",
+  "status": "ok",
+  "path": "models/onnx/patchcore_candle.onnx",
+  "size_mib": 137.62675952911377,
+  "opset": {
+   "ai.onnx": 20
+  },
+  "seconds": 4.330610913999408,
+  "exporter": "dynamo",
+  "input_name": "image",
+  "input_shape": [
+   1,
+   3,
+   224,
+   224
+  ],
+  "output_names": [
+   "score",
+   "anomaly_map"
+  ],
+  "reason": ""
  }
 ]

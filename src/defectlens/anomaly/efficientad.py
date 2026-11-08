@@ -40,7 +40,7 @@ from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
 from torchvision.transforms import v2
 
-from defectlens.anomaly.datamodule import IMAGENET_MEAN, IMAGENET_STD
+from defectlens.preprocess.anomaly_input import IMAGENET_MEAN, IMAGENET_STD
 
 MIN_IMAGE_SIZE = 256  # smaller inputs fail inside the autoencoder (checked: 224 does not run)
 

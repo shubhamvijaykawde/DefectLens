@@ -1,0 +1,78 @@
+# Phase 6a: what the API serves. Validated by src/defectlens/serve/config.py; the reasoning behind
+# every line of `products` is in reports/serve_models.md. Paths are relative to the working
+# directory (the repo root; /app in the Docker image).
+#
+# One product = one model, so steel (NEU-DET) and VisA are never fused. Sessions are loaded on
+# first use and dropped least-recently-used first when the declared sizes exceed the budget.
+frozen_thresholds: reports/frozen_thresholds.json   # Phase 4a; its hash is verified at start-up
+fn_fp_ratio: 10          # default operating point; 5, 10 and 50 were frozen. An assumption, not a measurement.
+providers: [CUDAExecutionProvider, CPUExecutionProvider]   # first available wins; CPU is the fallback
+require_cuda: false      # true: refuse to start / load instead of falling back to CPU
+vram_budget_mib: 5000    # of 8188 on the RTX 4060 Laptop; leaves room for Windows (~1 GB) and the context
+preload: []              # product names to load at start-up (default: lazy)
+max_upload_bytes: 20971520     # 20 MiB
+max_pixels: 40000000
+heatmap: {max_side: 512, alpha: 0.45, max_regions: 10}
+dfine: {top_k: 100, score_floor: 0.001}   # only used if a product has format: dfine
+
+# Same values as configs/preprocess/default.yaml (a test compares them); `size` comes from the ONNX input.
+steel_preprocess:
+  letterbox: true
+  pad_value: 114
+  clahe: {enabled: false, clip_limit: 2.0, tile_grid: [8, 8]}
+  roi: null
+  roi_min_visible: 0.5
+  three_channel: true
+
+# `tf32` follows the rule written in reports/serve_models.md: on only if the product's frozen
+# thresholds had zero flips with it on and it saves >= 20% model latency in the Phase 5a benchmark.
+# `vram_mib` = device memory of one session in the Phase 5a benchmark (reports/benchmark.md, TF32
+# off rows; it includes a CUDA context). EfficientAD was timed on pcb1 only and the other three
+# categories share its architecture; PatchCore candle uses the pcb1 row (candle was not timed).
+products:
+  steel:
+    kind: detector
+    format: torchvision
+    onnx: models/onnx/faster_rcnn.onnx          # exported from models/faster_rcnn_aug/best.pt (TorchScript route)
+    frozen_model: faster_rcnn_aug
+    frozen_category: all
+    tf32: false
+    vram_mib: 1332
+    trained_image_size: [200, 200]
+    description: "NEU-DET hot-rolled steel, six defect classes (Faster R-CNN ResNet50-FPN v2)."
+  visa_cashew:
+    kind: anomaly
+    format: anomaly
+    onnx: models/onnx/efficientad_cashew.onnx
+    frozen_model: efficientad
+    frozen_category: cashew
+    tf32: true
+    vram_mib: 642
+    description: "VisA cashew, anomaly score and map (EfficientAD-S)."
+  visa_candle:
+    kind: anomaly
+    format: anomaly
+    onnx: models/onnx/patchcore_candle.onnx
+    frozen_model: patchcore
+    frozen_category: candle
+    tf32: false
+    vram_mib: 960
+    description: "VisA candle, anomaly score and map (PatchCore, wide_resnet50_2)."
+  visa_pcb1:
+    kind: anomaly
+    format: anomaly
+    onnx: models/onnx/efficientad_pcb1.onnx
+    frozen_model: efficientad
+    frozen_category: pcb1
+    tf32: true
+    vram_mib: 642
+    description: "VisA pcb1, anomaly score and map (EfficientAD-S)."
+  visa_macaroni2:
+    kind: anomaly
+    format: anomaly
+    onnx: models/onnx/efficientad_macaroni2.onnx
+    frozen_model: efficientad
+    frozen_category: macaroni2
+    tf32: true
+    vram_mib: 642
+    description: "VisA macaroni2, anomaly score and map (EfficientAD-S)."

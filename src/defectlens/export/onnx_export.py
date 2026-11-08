@@ -32,9 +32,9 @@ import onnx
 import torch
 from omegaconf import OmegaConf
 
-from defectlens.anomaly.datamodule import IMAGENET_MEAN, IMAGENET_STD
 from defectlens.data.coco import read_coco
 from defectlens.detection.trainer import BACKENDS
+from defectlens.preprocess.anomaly_input import IMAGENET_MEAN, IMAGENET_STD
 
 # transformers documents this switch for export and production: it disables shape sanity checks
 # (torch_compilable_check) that the Dynamo translator can not convert (aten._is_all_true).

@@ -14,7 +14,6 @@ import torch
 
 import defectlens.anomaly.efficientad as efficientad
 import defectlens.anomaly.runner as runner
-from defectlens.anomaly.datamodule import IMAGENET_MEAN, IMAGENET_STD
 from defectlens.anomaly.efficientad import (
     EfficientAD,
     endless,
@@ -22,6 +21,7 @@ from defectlens.anomaly.efficientad import (
     penalty_loader,
 )
 from defectlens.config import load_config
+from defectlens.preprocess.anomaly_input import IMAGENET_MEAN, IMAGENET_STD
 from defectlens.seed import seed_everything
 
 SIZE = 256

@@ -760,6 +760,7 @@ cu130 = [
     { name = "torchvision", version = "0.29.1+cu130", source = { registry = "https://download.pytorch.org/whl/cu130" } },
 ]
 dev = [
+    { name = "httpx" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "ruff" },
@@ -767,6 +768,9 @@ dev = [
 serve = [
     { name = "fastapi" },
     { name = "gradio" },
+    { name = "python-multipart" },
+    { name = "pyyaml" },
+    { name = "uvicorn" },
 ]
 
 [package.metadata]
@@ -799,6 +803,7 @@ cu130 = [
     { name = "torchvision", specifier = "==0.29.1", index = "https://download.pytorch.org/whl/cu130", conflict = { package = "defectlens", group = "cu130" } },
 ]
 dev = [
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "ruff" },
@@ -806,6 +811,9 @@ dev = [
 serve = [
     { name = "fastapi" },
     { name = "gradio" },
+    { name = "python-multipart", specifier = ">=0.0.33" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
+    { name = "uvicorn", specifier = ">=0.54.0" },
 ]
 
 [[package]]

@@ -10,7 +10,7 @@ Phases 0a-0c (environment, project skeleton, risk spikes), 1a-1b (data, splits, 
 2a.1 (evaluation code, classical baseline), 2a.2 (Faster R-CNN), 2b.1 (D-FINE-S), 2b.2 (comparison), the
 matched Faster R-CNN rerun, 3a-3c (PatchCore, AnomalyDINO, EfficientAD, few-shot curve) and 4a (cost-based
 thresholds, one frozen evaluation, error gallery) are done. Phase 4b (leave-one-defect-type-out on VisA pcb1) is run: it weakly supports the claim that the anomaly path catches
-defect types the detector never saw (clearly for `missing`, undecided for the rest, small sample), see its section. Phase 5a (ONNX export, verification against PyTorch, ORT CUDA benchmark) is done. Not started: TensorRT, the API and demo (Phase 5b onward). Every number below
+defect types the detector never saw (clearly for `missing`, undecided for the rest, small sample), see its section. Phase 5a (ONNX export, verification against PyTorch, ORT CUDA benchmark) and Phase 6a (the FastAPI service) are done. Not started: TensorRT (5b, optional), the Gradio demo and the Docker image (6b), the final CI run and README tables (6c). Every number below
 comes from an MLflow run or a script output; details per phase are in [PLAN.md](PLAN.md).
 
 ## Setup (WSL2 Ubuntu, NVIDIA GPU)
@@ -22,7 +22,7 @@ uv run pytest && uv run ruff check . && uv run mypy src
 uv run pytest -m slow                # the 6 tests above 5 s, skipped by default
 ```
 
-The default run skips tests marked `slow` (above 5 s each) to stay under 60 s: 230 tests in 33 s here, plus 6 slow
+The default run skips tests marked `slow` (above 5 s each) to stay under 60 s: 297 tests in 36 s here, plus 6 slow
 tests in 105 s. `.github/workflows/ci.yml` installs the `cpu` group from the lockfile and runs ruff, mypy, `pytest` and
 `pytest -m slow`; it has not run yet (it needs a push).
 
@@ -386,3 +386,35 @@ PyTorch eager** here (D-FINE-S in PyTorch strict fp32 takes 27.45 ms), so what t
 artefact, not speed. AnomalyDINO under ORT uses about 4.9 GB of device memory (about 1.9 GB in PyTorch). One machine (RTX 4060
 Laptop, WSL2), one run per row, no pre- or post-processing in the timings; protocol, resources, limits and what was not
 measured: [reports/benchmark.md](reports/benchmark.md).
+
+## API (Phase 6a)
+
+```bash
+uv run python scripts/serve.py                                   # localhost:8000, models load on first use
+curl -F image=@tests/fixtures/sample.jpg "localhost:8000/inspect?product=steel"
+curl -F image=@some_visa_image.JPG "localhost:8000/inspect?product=visa_pcb1&fn_fp_ratio=10"
+curl localhost:8000/health ; curl localhost:8000/products
+```
+
+`POST /inspect` takes one image (JPEG, PNG or BMP) and a `product`: `steel` (the augmented Faster R-CNN trained on NEU-DET)
+or `visa_cashew`, `visa_candle`, `visa_pcb1`, `visa_macaroni2` (EfficientAD-S, PatchCore for candle). A product runs exactly one
+model, so steel and VisA are never fused. The answer holds `flagged`, `defects` (label, score and box in the uploaded
+image's pixels), for VisA products the anomaly score and a base64 PNG heatmap, the operating point used (threshold, cost ratio, frozen-file
+SHA-256), the execution provider and TF32 setting, and timings. The threshold is the frozen Phase 4a one for `fn_fp_ratio` 5, 10 (default) or 50, which are
+assumed cost ratios, not measured ones. `/health` reports the provider that works (`CUDAExecutionProvider`, falling back to CPU with
+the reason) and the loaded models; models are loaded lazily under a 5,000 MiB device budget. Bad images answer 400, unknown
+products 404, a missing or unloadable model 503. Settings: `configs/serve/default.yaml`.
+
+- **Why these models, and the TF32 settings** (steel off, EfficientAD on, PatchCore off, by a rule fixed before the measurement):
+  [reports/serve_models.md](reports/serve_models.md). AnomalyDINO is not served (4.9 GB under ORT, no category where it leads EfficientAD by
+  more than 0.05 image AUROC on the selection split).
+- **The frozen thresholds were set on PyTorch scores; the API scores with ONNX Runtime.** On the selection splits, 0 of 375 VisA
+  images change side of their frozen threshold (TF32 off or on), but the nearest image sits only 0.27-1.61% from its threshold while the two
+  paths differ by up to 1.41%, so unseen images within about 1% of a threshold can fall on the other side. For steel, no image changes
+  alarm status (none is defect-free), but 13 / 17 / 66 of 270 val images keep a different number of boxes at ratio 5 / 10 / 50, and the val cost at the
+  frozen threshold rises by 2.9% / 1.4% / 2.4% (part of it is the fp16 reference path). The thresholds were kept as frozen and the
+  shift is disclosed; re-selecting them on ORT scores would need a new evaluation round. Not measured: the CPU fallback path.
+- **Limits:** the steel detector was trained on 200 x 200 images (other sizes get a warning); `visa_macaroni2` flags 44 of 50 normal
+  calibration images at its frozen threshold, so its flags say little; heatmap regions are derived from the anomaly map and have not been evaluated as
+  boxes; a live check with one sequential client gave warm server-side p50 of 75.2 ms (steel), 27.6 ms (pcb1) and 31.0 ms (candle); no load
+  test, no authentication.

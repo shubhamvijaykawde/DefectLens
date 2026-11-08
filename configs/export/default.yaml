@@ -12,7 +12,7 @@ export:
     faster_rcnn: models/faster_rcnn_aug/best.pt   # the better of the two Faster R-CNN runs on val
   anomaly:                             # categories exported per model (others: pcb1 only)
     efficientad: [cashew, candle, pcb1, macaroni2]
-    patchcore: [pcb1]
+    patchcore: [pcb1, candle]            # candle: served for that category (Phase 6a)
     anomaly_dino: [pcb1]
 
 verify:

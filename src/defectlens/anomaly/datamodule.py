@@ -20,9 +20,8 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 
 from defectlens.data.visa_splits import read_one_cls
+from defectlens.preprocess.anomaly_input import IMAGENET_MEAN, IMAGENET_STD, resize_normalize
 
-IMAGENET_MEAN = (0.485, 0.456, 0.406)
-IMAGENET_STD = (0.229, 0.224, 0.225)
 SPLITS = ("train", "threshold_calibration", "threshold_evaluation")
 
 
@@ -84,10 +83,7 @@ class VisaImages(Dataset[dict[str, Any]]):
         if bgr is None:
             msg = f"cannot read image {self.root / self.paths[index]}"
             raise FileNotFoundError(msg)
-        rgb = cv2.cvtColor(cv2.resize(bgr, (w, h), interpolation=cv2.INTER_AREA), cv2.COLOR_BGR2RGB)
-        x = (rgb.astype(np.float32) / 255.0 - np.array(IMAGENET_MEAN, dtype=np.float32)) / np.array(
-            IMAGENET_STD, dtype=np.float32
-        )
+        x = resize_normalize(bgr, (h, w))
         mask = np.zeros((h, w), dtype=np.float32)
         if self.labels[index] and self.mask_paths[index]:
             m = cv2.imread(str(self.root / self.mask_paths[index]), cv2.IMREAD_GRAYSCALE)
