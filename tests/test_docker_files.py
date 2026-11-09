@@ -140,3 +140,40 @@ def test_smoke_script_is_valid_bash_and_covers_what_the_phase_requires() -> None
                "torch is not installed", "no TensorRT", "--gpus=all", "reports/docker_smoke.json")
     for needle in needles:
         assert needle in text, needle
+
+
+# ---- Phase 6c: the Docker job of CI and the static checks it runs -------------------------------
+
+
+CI = yaml.safe_load((ROOT / ".github" / "workflows" / "ci.yml").read_text())
+
+
+def ci_steps(job: str) -> list[dict[str, str]]:
+    return CI["jobs"][job]["steps"]
+
+
+def test_ci_has_a_docker_job_that_builds_without_pushing() -> None:
+    assert {"test", "docker"} <= set(CI["jobs"])
+    runs = " ".join(s.get("run", "") for s in ci_steps("docker"))
+    uses = " ".join(s.get("uses", "") for s in ci_steps("docker"))
+    assert "docker build" in runs
+    assert "push" not in runs and "login" not in runs and "--push" not in runs
+    assert "docker/login-action" not in uses and "build-push-action" not in uses
+
+
+def test_ci_docker_job_checks_disk_before_it_builds_and_runs_the_static_checks() -> None:
+    names = [s.get("name", "") for s in ci_steps("docker")]
+    disk = next(i for i, n in enumerate(names) if "disk" in n.lower())
+    build = next(i for i, n in enumerate(names) if n.startswith("Build"))
+    assert disk < build
+    text = " ".join(s.get("run", "") for s in ci_steps("docker"))
+    assert "df -h" in text and "scripts/docker_static_checks.sh" in text
+    assert CI["jobs"]["docker"]["runs-on"] == CI["jobs"]["test"]["runs-on"]  # pinned image
+
+
+def test_static_checks_script_is_valid_bash_and_needs_no_gpu_or_weights() -> None:
+    script = ROOT / "scripts" / "docker_static_checks.sh"
+    subprocess.run(["bash", "-n", str(script)], check=True)
+    body = script.read_text()
+    code = "\n".join(ln for ln in body.splitlines() if not ln.lstrip().startswith("#"))
+    assert "--gpus" not in code and "/app/models" not in code and " -v \"" not in code

@@ -36,3 +36,53 @@ jobs:
       # Tests marked `slow` (> 5 s each) are excluded from the default run and run here.
       - name: Tests (slow)
         run: uv run --no-sync pytest -m slow
+
+  # Builds the GPU image of Phase 6b (about 5.2 GB by `docker image inspect .Size`, measured locally) and
+  # runs the checks that need no GPU and no weights. It pushes nothing and uploads nothing.
+  #
+  # What this job can not do: run the image on a GPU. GitHub-hosted runners have none (GPU runners are paid),
+  # so `scripts/docker_smoke.sh` (CUDA provider, a real /inspect on steel and VisA) stays a local step.
+  # What it still catches: a broken `uv sync --locked` in the image, a missing file in the build context
+  # (.dockerignore is an allow-list), torch or TensorRT creeping in, a service that does not start.
+  #
+  # Not measured: this job has not run yet (it needs a push), so neither its duration nor the free disk
+  # on the runner is known. The disk step below prints both before and after, so the first run shows them.
+  docker:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      # The image needs roughly three times its own size while building: the builder stage's venv, the same
+      # venv copied into the runtime stage, and BuildKit's uv wheel cache (an estimate, not measured). A
+      # standard runner starts with little free space on `/`, so print it, delete what this job does not
+      # use only if it is short, print it again, and fail early with a clear message if it is still too
+      # little instead of failing half way through the build.
+      - name: Free disk space (only if short)
+        run: |
+          need_gb=20
+          free_gb() { df --output=avail -BG / | tail -1 | tr -dc '0-9'; }
+          df -h /
+          if [ "$(free_gb)" -lt "$need_gb" ]; then
+            echo "only $(free_gb) GB free on /, need $need_gb: removing toolchains this job does not use"
+            sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+            docker image prune --all --force
+            df -h /
+          fi
+          if [ "$(free_gb)" -lt "$need_gb" ]; then
+            echo "::error::only $(free_gb) GB free on / after cleaning, need $need_gb for the image build"
+            exit 1
+          fi
+
+      # No push, no registry login. The image stays in the runner's local Docker daemon.
+      - name: Build image
+        run: docker build --tag defectlens:ci .
+
+      - name: Image size and disk left
+        run: |
+          docker image inspect defectlens:ci --format 'image size: {{.Size}} bytes'
+          df -h /
+
+      # No GPU, no weights: properties of the image and a service that starts and answers on CPU.
+      - name: Static checks of the image
+        run: bash scripts/docker_static_checks.sh --tag defectlens:ci

@@ -14,7 +14,7 @@ to 4,218 MiB, so they fit together; the LRU eviction only matters if a larger mo
 | `visa_pcb1`, `visa_macaroni2`, `visa_cashew` | EfficientAD-S | the cheapest model, exported for all four categories (31 MiB, 574-642 MiB on the device); leads on pcb1 and macaroni2, and is not clearly beaten on cashew |
 | `visa_candle` | PatchCore | the only category where a heavier model leads EfficientAD by more than 0.05 image AUROC on `threshold_calibration` |
 
-**Anomaly rule (mine, written down before the flips were counted):** EfficientAD unless another model beats it by more than 0.05
+**Anomaly rule (mine, written down before the flips were counted; confirmed by the project owner on 2026-11-09, see "Decision" at the end):** EfficientAD unless another model beats it by more than 0.05
 image AUROC on `threshold_calibration`, the selection split (`reports/anomaly_comparison.md`, full data). That table gives cashew
 PatchCore 0.9464 / AnomalyDINO 0.9624 / EfficientAD 0.9304 (best minus EfficientAD: +0.032, not enough), candle 0.9736 / 0.9572 / 0.9108
 (+0.063, PatchCore), pcb1 0.9188 / 0.9304 / 0.9716 and macaroni2 0.7208 / 0.7336 / 0.8268 (EfficientAD best in both). The
@@ -117,7 +117,14 @@ off as decided in Phase 5a. A test checks that the config follows the rule on th
    (+2.9% / +1.4% / +2.4% on `val`, section 2) and the zero-flip VisA result with its ~1% caveat remain disclosed limitations,
    not something to correct. Consequence: the evaluation splits are not read a second time.
 2. **`steel` stays the augmented Faster R-CNN** (`format: torchvision`, `models/onnx/faster_rcnn.onnx`). D-FINE-S remains
-   implemented behind the config switch in section 1 but is not served. The decision did not mention the 0.05 AUROC rule for the anomaly products, so it stands
-   as written (my judgement, not a confirmed choice) (cashew EfficientAD, candle PatchCore).
+   implemented behind the config switch in section 1 but is not served.
+
+## Decision (project owner, Phase 6c; 2026-11-09)
+
+3. **The 0.05 image-AUROC rule for the served anomaly models is confirmed as the owner's decision.** It was written down as
+   my judgement in section 1 and the 2026-11-08 decision did not cover it; it now does. Served: EfficientAD for `visa_cashew`,
+   `visa_pcb1` and `visa_macaroni2`, PatchCore for `visa_candle`; AnomalyDINO is not served. The cut-off itself is still a
+   judgement made after reading the calibration AUROC table (section 1 says what a different rule would pick), and the
+   decision does not make the 0.05 more than that. No measurement changed and no evaluation split was read.
 
 This section records the decisions; no measurement changed.
