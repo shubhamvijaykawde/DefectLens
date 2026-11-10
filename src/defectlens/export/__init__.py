@@ -1,1 +1,1 @@
-"""export subpackage (see PLAN.md)."""
+"""export subpackage."""

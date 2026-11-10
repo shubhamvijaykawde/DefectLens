@@ -1,1 +1,1 @@
-"""anomaly subpackage (see PLAN.md)."""
+"""anomaly subpackage."""

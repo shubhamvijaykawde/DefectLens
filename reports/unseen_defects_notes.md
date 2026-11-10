@@ -52,4 +52,4 @@ recall lower for all four types) but does not separate novelty from the smaller 
 - Only pcb1. The result says nothing about other categories or about NEU-DET.
 - `threshold_evaluation` has now been read twice (4a frozen evaluation; this); the 4a numbers did not change.
   The smoke runs before the real runs printed evaluation-half rows from a 3-iteration detector; no setting changed
-  afterwards (see PLAN.md).
+  afterwards.

@@ -1,7 +1,7 @@
 # D-FINE-S (Hugging Face, COCO-pretrained) fine-tuned on NEU-DET.
-# AMP, batch 8 x accumulate 2, 640 px: 3.4 GiB peak VRAM allocated, ~55 s/epoch (dev runs, see PLAN.md).
+# AMP, batch 8 x accumulate 2, 640 px: 3.4 GiB peak VRAM allocated, ~55 s/epoch (dev runs).
 # Regularisation follows the Faster R-CNN run, where val mAP@50 plateaued near epoch 10 and val recall
-# fell afterwards (see PLAN.md 2a.2): early stopping on val + scale/shift augmentation + 40 epochs max.
+# fell afterwards: early stopping on val + scale/shift augmentation + 40 epochs max.
 name: dfine_s
 hf_id: ustc-community/dfine-small-coco
 pretrained: true

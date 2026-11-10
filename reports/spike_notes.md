@@ -11,7 +11,7 @@ onnx 1.23.2, onnxscript 0.7.2, onnxruntime-gpu 1.31.1, mlflow 3.18.0, dvc 3.67.1
 ## D-FINE-S (`scripts/spike_dfine.py`)
 
 - Checkpoint `ustc-community/dfine-small-coco` (Hub card lists apache-2.0; weights terms still to be
-  checked per `PLAN.md` section 3). 10.3 M parameters.
+  checked, see `docs/DATA_TERMS.md`). 10.3 M parameters.
 - Forward pass, batch 1, 640x640, fp16 autocast: logits `(1, 300, 80)`, boxes `(1, 300, 4)`.
 - Peak VRAM, inference: **124 MiB**.
 
@@ -73,7 +73,7 @@ AUROC 0.9654, 4,685 MiB). The script now subsets inside `_setup` and asserts the
   `e01ee2ec00343ffc082ea050a2e10556.dir`, 3,844,680,698 bytes, in `data/raw/visa.dvc`.
 - The archive contains `LICENSE-DATASET`, whose text begins "Attribution 4.0 International"
   (CC BY 4.0). That is one more data point for `docs/DATA_TERMS.md` in Phase 1a; the conflict with other
-  sources listed in `PLAN.md` is not resolved by this.
+  sources recorded in `docs/DATA_TERMS.md` is not resolved by this.
 
 ## Plan estimates vs measured
 

@@ -1,1 +1,1 @@
-"""detection subpackage (see PLAN.md)."""
+"""detection subpackage."""

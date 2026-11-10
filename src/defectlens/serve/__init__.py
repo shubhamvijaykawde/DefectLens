@@ -1,1 +1,1 @@
-"""serve subpackage (see PLAN.md)."""
+"""serve subpackage."""

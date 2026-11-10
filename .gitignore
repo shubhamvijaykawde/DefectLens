@@ -25,3 +25,7 @@ models/
 # Imagenette for the EfficientAD penalty loss (auto-downloaded, about 1.5 GB)
 data/raw/imagenette/
 data/raw/imagenette.partial/
+
+# local working notes, kept on disk but not published
+/PLAN.md
+/CLAUDE.md

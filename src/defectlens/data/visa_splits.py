@@ -1,7 +1,7 @@
 """VisA ``1cls`` splits: train (normal only) plus two disjoint halves of the official test set.
 
 ``threshold_calibration`` may be used to choose thresholds and models; ``threshold_evaluation``
-is for one final frozen-threshold evaluation and nothing else (see PLAN.md, Section 3).
+is for one final frozen-threshold evaluation and nothing else (README.md, "Reproducibility").
 """
 
 from __future__ import annotations

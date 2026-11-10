@@ -164,8 +164,9 @@ between runs. The anomaly models, which never see any anomaly, show no consisten
 1.00 against 0.68 on bent, 0.61 against 0.91 on melt), so their recall tracks the type, not the held-out status.
 
 **What would settle the open part.** Compare the detector's recall on each type when that type is trained on (the
-control run) with when it is held out. The per-image scores are saved in the result files, so this needs no new run,
-but it is outside the protocol written before the runs, so it would be labelled exploratory.
+control run) with when it is held out. This was done afterwards from the saved per-image scores, outside the protocol
+written before the runs, so it is labelled exploratory: see `reports/unseen_followup.md`. It points the same way (held-out
+recall lower for all four types) but does not separate novelty from the smaller training set of the held-out runs.
 
 **Limits.**
 - Small sample: 7 (`missing`), 9 (`bent`), 13 (`scratch`) and 28 (`melt`) unseen evaluation images. Intervals are wide and
@@ -181,4 +182,4 @@ but it is outside the protocol written before the runs, so it would be labelled 
 - Only pcb1. The result says nothing about other categories or about NEU-DET.
 - `threshold_evaluation` has now been read twice (4a frozen evaluation; this); the 4a numbers did not change.
   The smoke runs before the real runs printed evaluation-half rows from a 3-iteration detector; no setting changed
-  afterwards (see PLAN.md).
+  afterwards.

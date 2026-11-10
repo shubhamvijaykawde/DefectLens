@@ -325,7 +325,7 @@ uv sync                             # locked env from uv.lock, CUDA 13 torch bui
 uv run python scripts/check_env.py  # torch / CUDA / ONNX Runtime provider status
 ```
 
-The first `uv sync` took 9 min 23 s here and the `.venv` is 7.0 GB (PLAN.md, Phase 0b). For a CPU-only environment (what CI
+The first `uv sync` took 9 min 23 s here and the `.venv` is 7.0 GB (measured once, Phase 0b). For a CPU-only environment (what CI
 uses): `uv sync --locked --no-default-groups --group cpu --group serve --group dev`; then use `uv run --no-sync`.
 
 **Data** (not in git; official sources and terms in [docs/DATA_TERMS.md](docs/DATA_TERMS.md)):
@@ -390,7 +390,7 @@ Checks (all CPU, fast): `uv run pytest` (345 tests in 40 s here), `uv run pytest
 - **Regenerating the reports:** `compare_detectors.py`, `compare_anomaly.py`, `evaluate_thresholds.py`, `render_unseen.py`,
   `render_unseen_followup.py`, `render_benchmark.py`, `render_serve_models.py` write the files in `reports/`;
   `uv run python scripts/build_report_tables.py` then rewrites the tables above (`--check` fails if they are out of date, and a
-  test does the same). Per-phase detail, commands and measured results: [PLAN.md](PLAN.md).
+  test does the same). Run ids, commands and measured results per experiment are in the `reports/` files named above.
 - **Data versioning:** data is tracked with DVC locally (`.dvc` files pin the hashes), but **no DVC remote is planned**, because
   the datasets cannot be redistributed. `dvc pull` therefore does not work from a clone; the download scripts above, which check
   sha256, are the documented route.

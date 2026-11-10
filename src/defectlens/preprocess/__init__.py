@@ -1,1 +1,1 @@
-"""preprocess subpackage (see PLAN.md)."""
+"""preprocess subpackage."""

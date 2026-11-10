@@ -9,7 +9,7 @@ Pipeline per grayscale image:
 5. each connected component with at least ``min_area`` pixels becomes a box, scored by its mean z.
 
 It outputs boxes and scores only, with a single class, so it is compared with the deep models on
-class-agnostic AP and recall (PLAN.md, decision 8). Parameters are chosen by :func:`tune` on the
+class-agnostic AP and recall, not per-class mAP. Parameters are chosen by :func:`tune` on the
 validation split only.
 """
 

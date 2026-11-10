@@ -1,1 +1,1 @@
-"""eval subpackage (see PLAN.md)."""
+"""eval subpackage."""

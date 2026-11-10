@@ -1,1 +1,1 @@
-"""data subpackage (see PLAN.md)."""
+"""data subpackage."""
